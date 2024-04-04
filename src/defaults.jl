@@ -1,0 +1,1 @@
+POINT_SCALE = 0.0001
