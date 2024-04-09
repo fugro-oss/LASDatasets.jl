@@ -29,8 +29,16 @@ end
 function merge_fields!(original::LasRecord{TPoint,NUserBytes}, merge_in::TNewValues) where {TPoint,NUserBytes,TNewValues}
 
     fields = collect(fieldnames(TPoint))
-    
-    for field ∈ filter(f -> f ∈ fields, fieldnames(TNewValues))
+
+    this_point_fields = fieldnames(TNewValues)
+    can_merge_fields = this_point_fields .∈ Ref(fields)
+
+    cant_merge_these_fields = this_point_fields[.!can_merge_fields]
+    if !isempty(cant_merge_these_fields)
+        @warn "Can't merge fields $(cant_merge_these_fields) due to point type compatibility"
+    end
+
+    for field ∈ this_point_fields[can_merge_fields]
         getfield(original.point, field) .= getfield(merge_in, field)
     end
 end

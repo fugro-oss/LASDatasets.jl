@@ -66,6 +66,8 @@ end
 Base.read(io::IO, ::Type{SpatialInfo}) = read_struct(io, SpatialInfo)
 Base.write(io::IO, info::SpatialInfo) = write_struct(io, info)
 
+const DEFAULT_SPATIAL_INFO = SpatialInfo(AxisInfo(POINT_SCALE, POINT_SCALE, POINT_SCALE), AxisInfo(0.0, 0.0, 0.0), AxisInfo(Range(Inf, -Inf), Range(Inf, -Inf), Range(Inf, -Inf)))
+
 function bounding_box(points::Vector{SVector{3, T}}) where {T <: Real}
     x_min = typemax(T)
     x_max = typemin(T)

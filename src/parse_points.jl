@@ -187,9 +187,7 @@ function get_int_xyz(::Type{TInt}, position::SVector{3, Float64}, xyz::SpatialIn
 end
 
 function get_position(point::T, xyz::SpatialInfo) where {N, T <: LasPoint{N}}
-    SVector{3, Float64}(point.x * xyz.scale.x + xyz.offset.x,
-                        point.y * xyz.scale.y + xyz.offset.y,
-                        point.z * xyz.scale.z + xyz.offset.z)
+    SVector{3, Float64}(xcoord(point.x, xyz), ycoord(point.y, xyz), zcoord(point.z, xyz))
 end
 
 function get_intensity(point::T)  where {N, T <: LasPoint{N}}

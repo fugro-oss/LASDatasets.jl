@@ -2,6 +2,7 @@
     $(TYPEDEF)
 
 A LAS Header containing metadata regarding information in a LAS file
+See full specification [here](https://www.asprs.org/wp-content/uploads/2019/03/LAS_1_4_r14.pdf#subsection.0.2.4)
 
 $(TYPEDFIELDS)
 """
@@ -61,7 +62,7 @@ Base.@kwdef mutable struct LasHeader
     legacy_point_return_count::NTuple{5, UInt32} = ntuple(_ -> UInt32(0), 5)
     
     """Spatial information describing the bounding range of the points, their offsets and any scaling factor applied to them"""
-    spatial_info::SpatialInfo = SpatialInfo(AxisInfo(1.0, 1.0, 1.0), AxisInfo(0.0, 0.0, 0.0), AxisInfo(Range(0.0, 0.0), Range(0.0, 0.0), Range(0.0, 0.0)))
+    spatial_info::SpatialInfo = DEFAULT_SPATIAL_INFO
     
     """Offset in bytes from the start of the file to the first byte of the Waveform Data Package Reckord"""
     waveform_record_start::UInt64 = UInt64(0)
@@ -409,6 +410,7 @@ function set_point_record_count!(header::LasHeader, num_points::Integer)
 end
 
 function set_num_vlr!(header::LasHeader, n::Integer)
+    @assert n ≤ typemax(UInt64) "Number of VLRs cannot exceed $(typemax(UInt64)). Got $(n)"
     header.n_vlr = UInt64(n)
 end
 
@@ -500,16 +502,24 @@ end
 waveform_record_start(header::LasHeader) = h.waveform_record_start
 
 "X coordinate (Float64), apply scale and offset according to the header"
-xcoord(p::LasPoint, h::LasHeader) = muladd(p.x, h.spatial_info.scale.x, h.spatial_info.offset.x)
+xcoord(p::LasPoint, h::LasHeader) = xcoord(p, spatial_info(h))
 "Y coordinate (Float64), apply scale and offset according to the header"
-ycoord(p::LasPoint, h::LasHeader) = muladd(p.y, h.spatial_info.scale.y, h.spatial_info.offset.y)
+ycoord(p::LasPoint, h::LasHeader) = ycoord(p, spatial_info(h))
 "Z coordinate (Float64), apply scale and offset according to the header"
-zcoord(p::LasPoint, h::LasHeader) = muladd(p.z, h.spatial_info.scale.z, h.spatial_info.offset.z)
+zcoord(p::LasPoint, h::LasHeader) = zcoord(p, spatial_info(h))
+
+xcoord(p::LasPoint, xyz::SpatialInfo) = muladd(p.x, xyz.scale.x, xyz.offset.x)
+ycoord(p::LasPoint, xyz::SpatialInfo) = muladd(p.y, xyz.scale.y, xyz.offset.y)
+zcoord(p::LasPoint, xyz::SpatialInfo) = muladd(p.z, xyz.scale.z, xyz.offset.z)
 
 # inverse functions of the above
 "X value (Int32), as represented in the point data, reversing the offset and scale from the header"
-xcoord(x::Real, h::LasHeader) = round(Int32, (x - h.spatial_info.offset.x) / h.spatial_info.scale.x)
+xcoord(x::Real, h::LasHeader) = xcoord(x, spatial_info(h))
 "Y value (Int32), as represented in the point data, reversing the offset and scale from the header"
-ycoord(y::Real, h::LasHeader) = round(Int32, (y - h.spatial_info.offset.y) / h.spatial_info.scale.y)
+ycoord(y::Real, h::LasHeader) = ycoord(y, spatial_info(h))
 "Z value (Int32), as represented in the point data, reversing the offset and scale from the header"
-zcoord(z::Real, h::LasHeader) = round(Int32, (z - h.spatial_info.offset.z) / h.spatial_info.scale.z)
+zcoord(z::Real, h::LasHeader) = zcoord(z, spatial_info(h))
+
+xcoord(x::Real, xyz::SpatialInfo) = get_int(Int32, x, xyz.offset.x, xyz.scale.x)
+ycoord(y::Real, xyz::SpatialInfo) = get_int(Int32, y, xyz.offset.y, xyz.scale.y)
+zcoord(z::Real, xyz::SpatialInfo) = get_int(Int32, z, xyz.offset.z, xyz.scale.z)
