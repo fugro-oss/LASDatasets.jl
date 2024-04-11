@@ -54,7 +54,7 @@ end
 # version numbers are fixed in the LAS specification
 GeoKeys(keys::Vector{KeyEntry}) = GeoKeys(0x0001, 0x0001, 0x0000, UInt16(length(keys)), keys)
 
-"Create GeoKeys from EPSG code. Assumes CRS is projected and in meters."
+"Create GeoKeys from EPSG code. Assumes CRS is projected and in metres."
 function GeoKeys(epsg::Integer)
     #Standard types
     is_projected = KeyEntry(UInt16(1024), UInt16(0), UInt16(1), UInt16(1))         # Projected
@@ -141,7 +141,7 @@ end
 """
     $(TYPEDEF)
 
-An array of ASII data that contains many strings separated by null terminator characters in `ascii_params`.
+An array of ASCII data that contains many strings separated by null terminator characters in `ascii_params`.
 These are referenced by position from the data in a `GeoKeys` record
 """
 struct GeoAsciiParamsTag
@@ -179,7 +179,7 @@ struct OGC_WKT
     """Units applied along the horizontal (XY) plane in this coordinate system"""
     unit::Union{Missing, String}
 
-    """Units applied along the vertical (Z) plane in this coordinate system. Note: this will not in general match the horizontal coordinate"""
+    """Units applied along the vertical (Z) axis in this coordinate system. Note: this will not in general match the horizontal coordinate"""
     vert_unit::Union{Missing, String}
 end
 
@@ -241,7 +241,7 @@ get_vertical_unit(ogc_wkt::OGC_WKT) = ogc_wkt.vert_unit
 """
     $(TYPEDSIGNATURES)
 
-Given an OGC WKT coordinate system `wkt`, attempt to parse conversion units (to meters) with optional operator supplied overrides.
+Given an OGC WKT coordinate system `wkt`, attempt to parse conversion units (to metres) with optional operator supplied overrides.
 Can opt to convert all axes units or just the vertical.
 """
 function conversion_from_vlrs(wkt::OGC_WKT; 
@@ -256,7 +256,7 @@ function conversion_from_vlrs(wkt::OGC_WKT;
         if ismissing(unit) 
             unit = convert_x_y_z_units
         elseif convert_x_y_z_units != unit
-            @warn "Told x/y/z units are $(convert_x_y_z_units) but las header says $(unit) hope you're right!"
+            @warn "You say x/y/z units are $(convert_x_y_z_units), but las header says $(unit) -- hope you're right!"
             unit = convert_x_y_z_units
         end
     end
@@ -265,7 +265,7 @@ function conversion_from_vlrs(wkt::OGC_WKT;
         if ismissing(v_unit)
             v_unit = convert_z_units
         elseif convert_z_units != v_unit
-            @warn "Told z units are $(convert_z_units) but las header says $(v_unit) hope you're right!"
+            @warn "You say z units are $(convert_z_units), but las header says $(v_unit) -- hope you're right!"
             v_unit = convert_z_units
         end
     end
