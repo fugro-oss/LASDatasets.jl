@@ -1,6 +1,7 @@
 module LAS
 
 using ArchGDAL: importWKT, toPROJ4
+using BufferedStreams
 using ColorTypes
 using Dates
 using DocStringExtensions
@@ -23,6 +24,7 @@ include("points.jl")
 include("records.jl")
 include("header.jl")
 include("parse_points.jl")
+include("read.jl")
 
 # point functionality
 export LasRecord, LasPoint
@@ -48,5 +50,8 @@ export GeoKeys, GeoDoubleParamsTag, GeoAsciiParamsTag, OGC_WKT, WaveformPacketDe
 export get_horizontal_unit, get_vertical_unit, get_wkt_string
 export ClassificationLookup, get_classes, get_description, set_description!
 export @register_vlr_type
+
+# I/O methods
+export load_header, load_vlrs, load_evlrs
 
 end # module LAS

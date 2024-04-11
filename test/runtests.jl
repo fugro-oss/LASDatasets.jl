@@ -8,5 +8,6 @@ using TypedTables
 
 include("util.jl")
 include("spatial_info.jl")
+include("vlrs.jl")
 include("points.jl")
 include("header.jl")

@@ -211,15 +211,6 @@ function Base.read(io::IO, ::Type{LasVariableLengthRecord}, extended::Bool=false
     )
 end
 
-is_ogc_wkt_record(vlr::LasVariableLengthRecord) = (get_user_id(vlr) == "LASF_Projection") && (get_record_id(vlr) == ID_OGCWKTTAG)
-is_classification_lookup_record(vlr::LasVariableLengthRecord) = (get_user_id(vlr) == LAS_SPEC_USER_ID) && (get_record_id(vlr) == ID_CLASSLOOKUP)
-
-"Test whether a vlr is a GeoKeyDirectoryTag, GeoDoubleParamsTag or GeoAsciiParamsTag"
-is_srs(vlr::LasVariableLengthRecord) = vlr.record_id in (
-    ID_GEOKEYDIRECTORYTAG,
-    ID_GEODOUBLEPARAMSTAG,
-    ID_GEOASCIIPARAMSTAG)
-
 function Base.write(io::IO, vlr::LasVariableLengthRecord)
     write(io, vlr.reserved)
     writestring(io, vlr.user_id, 16)
@@ -230,3 +221,12 @@ function Base.write(io::IO, vlr::LasVariableLengthRecord)
     write(io, vlr.data)
     nothing
 end
+
+is_ogc_wkt_record(vlr::LasVariableLengthRecord) = (get_user_id(vlr) == "LASF_Projection") && (get_record_id(vlr) == ID_OGCWKTTAG)
+is_classification_lookup_record(vlr::LasVariableLengthRecord) = (get_user_id(vlr) == LAS_SPEC_USER_ID) && (get_record_id(vlr) == ID_CLASSLOOKUP)
+
+"Test whether a vlr is a GeoKeyDirectoryTag, GeoDoubleParamsTag or GeoAsciiParamsTag"
+is_srs(vlr::LasVariableLengthRecord) = vlr.record_id in (
+    ID_GEOKEYDIRECTORYTAG,
+    ID_GEODOUBLEPARAMSTAG,
+    ID_GEOASCIIPARAMSTAG)
