@@ -1,5 +1,6 @@
 module LAS
 
+using ArchGDAL: importWKT, toPROJ4
 using ColorTypes
 using Dates
 using DocStringExtensions
@@ -15,6 +16,9 @@ using TypedTables
 include("defaults.jl")
 include("util.jl")
 include("spatial_info.jl")
+include("vlrs.jl")
+include("registered_vlrs.jl")
+include("georef.jl")
 include("points.jl")
 include("records.jl")
 include("header.jl")
@@ -36,7 +40,13 @@ export set_waveform_external_bit!, set_waveform_internal_bit!, set_synthetic_ret
 export set_wkt_bit!, get_number_of_points_by_return, set_number_of_points_by_return!, waveform_record_start
 export xcoord, ycoord, zcoord
         
-
 export SpatialInfo, AxisInfo, Range
+
+# VLRs
+export LasVariableLengthRecord, get_user_id, get_record_id, get_description, get_data, is_extended
+export GeoKeys, GeoDoubleParamsTag, GeoAsciiParamsTag, OGC_WKT, WaveformPacketDescriptor, WaveformDataPackets
+export get_horizontal_unit, get_vertical_unit, get_wkt_string
+export ClassificationLookup, get_classes, get_description, set_description!
+export @register_vlr_type
 
 end # module LAS
