@@ -136,6 +136,8 @@ macro register_vlr_type(type, user_id, record_ids)
         end
         if !($(esc(user_id)) isa AbstractString)
             throw(AssertionError("User ID must be a String, not $(typeof($(esc(user_id))))"))
+        elseif Base.sizeof($(esc(user_id))) > 16
+            throw(AssertionError("User ID must be at most 16 bytes in length! Got $(Base.sizeof($(esc(user_id)))) bytes"))
         end
         if !(($(esc(record_ids))) isa AbstractVector{<:Integer})
             # if we've only entered a single number, put it in an array and carry on
