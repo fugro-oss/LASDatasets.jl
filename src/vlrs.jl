@@ -40,7 +40,7 @@ mutable struct LasVariableLengthRecord{TData}
         max_num_data_bytes = extended ? typemax(UInt64) : typemax(UInt16)
         @assert sizeof(data) ≤ max_num_data_bytes "Record is too long! Got $(length(data)) bytes when we can only have $(max_num_data_bytes) bytes!"
 
-        check_data_against_record_id(data, user_id, record_id)
+        check_data_against_record_id(data, user_id, record_id, extended)
         
         return new{TData}(reserved, user_id, record_id, description, data, extended)
     end
@@ -59,7 +59,7 @@ end
 
 Check that the `user_id` and `record_id` given are appropriate for a known VLR type data entry `data`
 """
-function check_data_against_record_id(data, user_id::String, record_id::Integer)
+function check_data_against_record_id(data, user_id::String, record_id::Integer, extended::Bool)
     data_type = typeof(data)
     if (user_id == LAS_SPEC_USER_ID) && (record_id != ID_SUPERSEDED)
         if extended
@@ -105,7 +105,7 @@ Mark a VLR as "superseded", meaning it has been replaced by a newer record when 
 Note: The LAS spec only allows for 1 superseded record per LAS file
 """
 function set_superseded!(vlr::LasVariableLengthRecord)
-    check_data_against_record_id(get_data(vlr), get_user_id(vlr), ID_SUPERSEDED)
+    check_data_against_record_id(get_data(vlr), get_user_id(vlr), ID_SUPERSEDED, is_extended(vlr))
     vlr.record_id = ID_SUPERSEDED
 end
 

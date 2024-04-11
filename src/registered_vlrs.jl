@@ -15,6 +15,7 @@ end
 get_description(lookup::ClassificationLookup, class::Integer) = lookup.class_description_map[UInt8(class)]
 get_classes(lookup::ClassificationLookup) = sort(collect(keys(lookup.class_description_map)))
 Base.length(lookup::ClassificationLookup) = length(lookup.class_description_map)
+Base.sizeof(lookup::ClassificationLookup) = 16 * Base.length(lookup)
 Base.:(==)(l1::ClassificationLookup, l2::ClassificationLookup) = l1.class_description_map == l2.class_description_map
 
 function set_description!(lookup::ClassificationLookup, class::Integer, description::String)
@@ -22,7 +23,7 @@ function set_description!(lookup::ClassificationLookup, class::Integer, descript
     lookup.class_description_map[UInt8(class)] = description
 end
 
-@register_vlr_type(ClassificationLookup, LAS_SPEC_USER_ID, [ID_CLASSLOOKUP])
+@register_vlr_type(ClassificationLookup, LAS_SPEC_USER_ID, ID_CLASSLOOKUP)
 
 function read_vlr_data(io::IO, ::Type{ClassificationLookup}, nb::Integer)
     @assert nb % 16 == 0 "Number of bytes to read for ClassificationLookup must be multiple of 16. Got $(nb)"
@@ -43,24 +44,52 @@ function Base.write(io::IO, lookup::ClassificationLookup)
     end
 end
 
+"""
+    $(TYPEDEF)
+
+A wrapper around a text area description, which is used for providing a textual description of the content of the LAS file
+
+$(TYPEDFIELDS)
+"""
 struct TextAreaDescription
+    """Text describing the content of the LAS file"""
     txt::String
 end
 
-@register_vlr_type(TextAreaDescription, LAS_SPEC_USER_ID, [ID_TEXTDESCRIPTION])
+@register_vlr_type(TextAreaDescription, LAS_SPEC_USER_ID, ID_TEXTDESCRIPTION)
 read_vlr_data(io::IO, ::Type{TextAreaDescription}, nb::Integer) = TextAreaDescription(readstring(io, nb))
 
+"""
+    $(TYPEDEF)
+
+A Wave Packet Descriptor which contains information that describes the configuration of the waveform packets. Since
+systems may be configured differently at different times throughout a job, the LAS file supports
+255 Waveform Packet Descriptors
+
+$(TYPEDFIELDS)
+"""
 struct WaveformPacketDescriptor
+    """Number of bits per sample. 2 to 32 bits per sample are supported"""
     bits_per_sample::UInt8
 
+    """Indicates the compression algorithm used for the waveform packets associated with
+    this descriptor. A value of 0 indicates no compression. Zero is the only value currently supported"""
     compression_type::UInt8
 
+    """Number of samples associated to this packet type. This always corresponds to the decompressed waveform packet"""
     num_samples::UInt32
 
+    """The temporal sample spacing in picoseconds. Example values might be 500, 1000, 2000, and so
+    on, representing digitizer frequencies of 2 GHz, 1 GHz, and 500 MHz respectively."""
     temporal_sample_spacing::UInt32
 
+    """The digitizer gain used to convert the raw digitized value to an absolute digitizer
+    voltage using the formula:
+    𝑉 𝑂𝐿𝑇 𝑆 = 𝑂𝐹 𝐹 𝑆𝐸𝑇 + 𝐺𝐴𝐼𝑁 * 𝑅𝑎𝑤_𝑊 𝑎𝑣𝑒𝑓 𝑜𝑟𝑚_𝐴𝑚𝑝𝑙𝑖𝑡𝑢𝑑𝑒
+    """
     digitizer_gain::Float64
 
+    """The digitizer offset used to convert the raw digitized value to an absolute digitizer using formula above"""
     digitizer_offset::Float64
 
     function WaveformPacketDescriptor(bits_per_sample::UInt8,
@@ -95,15 +124,4 @@ function Base.write(io::IO, desc::WaveformPacketDescriptor)
     write(io, desc.digitizer_offset)
 end
 
-# struct WaveformDataPackets
-#     bytes::Vector{UInt8}
-
-#     compressed::Bool
-
-#     function WaveformData(bytes::Vector{UInt8}, compressed::Bool = false)
-#         @assert (length(bytes) % 16 == 0) || (length(bytes) % 8 == 0) "Only waveform packets with 8 or 16 bits per sample supported"
-#         return new(bytes, compressed)
-#     end
-# end
-
-# TODO: implement read/write
+# TODO: Implement Waveform Data Record

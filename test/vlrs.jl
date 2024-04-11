@@ -103,7 +103,7 @@
 
         @test_throws AssertionError set_description!(lookup, 200, "Big description for a big class")
 
-        vlr = LasVariableLengthRecord(LAS.LAS_SPEC_USER_ID, LAS.ID_CLASSLOOKUP, "Classification Lookup")
+        vlr = LasVariableLengthRecord(LAS.LAS_SPEC_USER_ID, LAS.ID_CLASSLOOKUP, "Classification Lookup", lookup)
         
         # make sure we can save and load
         io = IOBuffer()
