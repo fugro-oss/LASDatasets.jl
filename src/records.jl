@@ -27,18 +27,9 @@ function Base.write(io::IO, record::LasRecord{TPoint,N}) where {TPoint,N}
 end
 
 function merge_fields!(original::LasRecord{TPoint,NUserBytes}, merge_in::TNewValues) where {TPoint,NUserBytes,TNewValues}
-
     fields = collect(fieldnames(TPoint))
-
-    this_point_fields = fieldnames(TNewValues)
-    can_merge_fields = this_point_fields .∈ Ref(fields)
-
-    cant_merge_these_fields = this_point_fields[.!can_merge_fields]
-    if !isempty(cant_merge_these_fields)
-        @warn "Can't merge fields $(cant_merge_these_fields) due to point type compatibility"
-    end
-
-    for field ∈ this_point_fields[can_merge_fields]
+    to_merge_fields = get_fields_to_merge(fields, TNewValues)
+    for field ∈ to_merge_fields
         getfield(original.point, field) .= getfield(merge_in, field)
     end
 end
@@ -46,9 +37,21 @@ end
 
 function merge_fields!(original::StructVector{TRecord}, merge_in::StructVector{TNewValues}) where {TPoints,NUserBytes, TRecord <: LasRecord{TPoints, NUserBytes}, TNewValues}
     fields = collect(fieldnames(TPoints))
-    for field ∈ filter(f -> f ∈ fields, fieldnames(TNewValues))
+    to_merge_fields = get_fields_to_merge(fields, TNewValues)
+    for field ∈ to_merge_fields
         getproperty(original.point, field) .= getproperty(merge_in, field)
     end
+end
+
+function get_fields_to_merge(fields::Vector{Symbol}, ::Type{TNewValues}) where TNewValues
+    this_point_fields = fieldnames(TNewValues)
+    can_merge_fields = this_point_fields .∈ Ref(fields)
+
+    cant_merge_these_fields = this_point_fields[.!can_merge_fields]
+    if !isempty(cant_merge_these_fields)
+        @warn "Can't merge fields $(cant_merge_these_fields) due to point type compatibility"
+    end
+    return this_point_fields[can_merge_fields]
 end
 
 Base.vcat(records::Vararg{TRecord,N}) where {N, NUserBytes, TPoints, TRecord <: LasRecord{TPoints, NUserBytes}} = TRecord(TPoint(map(field -> reduce(vcat, getfield.(getfield.(records, :point), Ref(field))), fieldnames(TPoints))...), reduce(vcat, getfield.(records, Ref(:user_bytes))))

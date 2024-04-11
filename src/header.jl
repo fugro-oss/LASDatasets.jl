@@ -113,7 +113,7 @@ Base.@kwdef mutable struct LasHeader
         elseif las_version.minor == 3
             @assert header_size == 235 "Invalid header size $(header_size). Must be 235 Bytes for LAS V1.3"
         elseif las_version.minor == 4
-            @assert header_size == 375 "Invalid header size $(header_size). Must be 375 Bytes for LAS V1.3"
+            @assert header_size == 375 "Invalid header size $(header_size). Must be 375 Bytes for LAS V1.4"
         end
 
         # make sure we have compatible point versions
