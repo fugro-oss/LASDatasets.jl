@@ -74,7 +74,7 @@
         @test LAS.conversion_from_vlrs(wkt) == SVector{3, Float64}(0.304800609601219, 0.304800609601219, 0.304800609601219)
 
         @test ismissing(LAS.units_to_conversion(missing))
-        @test ismissing(LAS.units_to_conversion("wierd-unknown-unit"))
+        @test ismissing(LAS.units_to_conversion("weird-unknown-unit"))
         @test SVector{3}(1.0, 1.0, 1.0) == LAS.units_to_conversion("m")
         @test SVector{3}(0.3048, 0.3048, 0.3048) == LAS.units_to_conversion("ft")
         @test SVector{3}(0.3048, 0.3048, 1.0) == LAS.units_to_conversion("ft", "m")
