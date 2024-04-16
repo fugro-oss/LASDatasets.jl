@@ -113,7 +113,7 @@ Base.@kwdef mutable struct LasHeader
         elseif las_version.minor == 3
             @assert header_size == 235 "Invalid header size $(header_size). Must be 235 Bytes for LAS V1.3"
         elseif las_version.minor == 4
-            @assert header_size == 375 "Invalid header size $(header_size). Must be 375 Bytes for LAS V1.4"
+            @assert header_size == 375 "Invalid header size $(header_size). Must be 375 Bytes for LAS V1.3"
         end
 
         # make sure we have compatible point versions
@@ -387,6 +387,26 @@ spatial_info(h::LasHeader) = h.spatial_info
 
 num_return_channels(h::LasHeader) = las_version(h) ≥ v"1.4" ? 15 : 5
 
+function set_las_version!(h::LasHeader, v::VersionNumber)
+    if any([
+        (v ≤ v"1.1") && (get_point_format_id(point_format(h)) ≥ 2),
+        (v ≤ v"1.2") && (get_point_format_id(point_format(h)) ≥ 4),
+        (v ≤ v"1.3") && (get_point_format_id(point_format(h)) ≥ 5),
+        (v ≤ v"1.4") && (get_point_format_id(point_format(h)) ≥ 11),
+        v ≥ v"1.5"
+    ])
+        error("Incompatible LAS version $(v) with point format $(point_format(h))")
+    end
+    old_version = deepcopy(las_version(h))
+    h.las_version = v
+    h.header_size = get_header_size_from_version(v)
+    h.data_offset += (h.header_size - get_header_size_from_version(old_version))
+    if (v ≥ v"1.4") && (get_point_format_id(point_format(h)) ≤ 5)
+        h.record_count = UInt64(h.legacy_record_count)
+        h.point_return_count = ntuple(i -> i ≤ 5 ? h.legacy_point_return_count[i] : 0, 15)
+    end
+end
+
 function set_spatial_info!(header::LasHeader, info::SpatialInfo)
     header.spatial_info = info
 end
@@ -410,7 +430,6 @@ function set_point_record_count!(header::LasHeader, num_points::Integer)
 end
 
 function set_num_vlr!(header::LasHeader, n::Integer)
-    @assert n ≤ typemax(UInt64) "Number of VLRs cannot exceed $(typemax(UInt64)). Got $(n)"
     header.n_vlr = UInt64(n)
 end
 
@@ -499,7 +518,7 @@ function set_number_of_points_by_return!(header::LasHeader, points_per_return::N
     end
 end
 
-waveform_record_start(header::LasHeader) = h.waveform_record_start
+waveform_record_start(header::LasHeader) = header.waveform_record_start
 
 "X coordinate (Float64), apply scale and offset according to the header"
 xcoord(p::LasPoint, h::LasHeader) = xcoord(p, spatial_info(h))
