@@ -365,13 +365,6 @@ header_size(h::LasHeader) = h.header_size
 point_data_offset(h::LasHeader) = Int(h.data_offset)
 point_record_length(h::LasHeader) = Int(h.data_record_length)
 
-function record_format(header::LasHeader)
-    point_type = get_point_format(LasPoint{Int(header.data_format_id)})
-    record_length = header.data_record_length
-    number_of_user_bytes = record_length - sum(sizeof.(eltype.(fieldtypes(point_type))))
-    return LasRecord{point_type, number_of_user_bytes}
-end
-
 function point_format(header::LasHeader)
     return get_point_format(LasPoint{Int(header.data_format_id)})
 end

@@ -21,10 +21,12 @@ include("vlrs.jl")
 include("registered_vlrs.jl")
 include("georef.jl")
 include("points.jl")
-include("records.jl")
 include("header.jl")
 include("parse_points.jl")
+include("records.jl")
+include("las_content.jl")
 include("read.jl")
+include("write.jl")
 
 # point functionality
 export LasRecord, LasPoint
@@ -44,14 +46,20 @@ export xcoord, ycoord, zcoord
         
 export SpatialInfo, AxisInfo, Range
 
-# VLRs
 export LasVariableLengthRecord, get_user_id, get_record_id, get_description, get_data, is_extended
-export GeoKeys, GeoDoubleParamsTag, GeoAsciiParamsTag, OGC_WKT, ClassificationLookup, TextAreaDescription, WaveformPacketDescriptor
+export GeoKeys, GeoDoubleParamsTag, GeoAsciiParamsTag, OGC_WKT 
+export ClassificationLookup, TextAreaDescription, ExtraBytes, WaveformPacketDescriptor, WaveformDataPackets
 export get_horizontal_unit, get_vertical_unit, get_wkt_string
 export get_classes, get_description, set_description!
 export @register_vlr_type
 
+export LasContent, get_header, get_pointcloud, get_vlrs, get_evlrs, get_user_defined_bytes
+export add_vlr!, remove_vlr!, add_column!
+
 # I/O methods
-export load_header, load_vlrs, load_evlrs
+export load_las, load_pointcloud, save_las, load_header, load_vlrs
+
+# constants
+export DEFAULT_LAS_COLUMNS, ALL_LAS_COLUMNS
 
 end # module LAS

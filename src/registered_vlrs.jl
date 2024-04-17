@@ -23,7 +23,7 @@ function set_description!(lookup::ClassificationLookup, class::Integer, descript
     lookup.class_description_map[UInt8(class)] = description
 end
 
-@register_vlr_type(ClassificationLookup, LAS_SPEC_USER_ID, ID_CLASSLOOKUP)
+@register_vlr_type ClassificationLookup LAS_SPEC_USER_ID ID_CLASSLOOKUP
 
 function read_vlr_data(io::IO, ::Type{ClassificationLookup}, nb::Integer)
     @assert nb % 16 == 0 "Number of bytes to read for ClassificationLookup must be multiple of 16. Got $(nb)"
@@ -56,8 +56,140 @@ struct TextAreaDescription
     txt::String
 end
 
-@register_vlr_type(TextAreaDescription, LAS_SPEC_USER_ID, ID_TEXTDESCRIPTION)
+@register_vlr_type TextAreaDescription LAS_SPEC_USER_ID ID_TEXTDESCRIPTION
 read_vlr_data(io::IO, ::Type{TextAreaDescription}, nb::Integer) = TextAreaDescription(readstring(io, nb))
+
+"""
+    $(TYPEDEF)
+
+Extra Bytes record that documents an extra field present for a point in a LAS file
+
+$(TYPEDFIELDS)
+"""
+struct ExtraBytes{TData}
+    """Specifies whether the min/max range, scale factor and offset for this field is set/meaningful and whether there is a special value to be interpreted as \"NO_DATA\""""
+    options::UInt8
+
+    """Name of the extra field"""
+    name::String
+
+    """A value that's used if the \"NO_DATA\" flag is set in `options`. Use this if the point doesn't have data for this type"""
+    no_data::TData
+
+    """Minimum value for this field, zero if not using"""
+    min_val::TData
+
+    """Maximum value for this field, zero if not using"""
+    max_val::TData
+
+    """Scale factor applied to this field, zero if not using"""
+    scale::TData
+
+    """Offset applied to this field, zero if not using"""
+    offset::TData
+
+    """Description of this extra field"""
+    description::String
+
+    function ExtraBytes{TData}(options::UInt8, name::String, no_data::TData, min_val::TData, max_val::TData, scale::TData, offset::TData, description::String) where TData
+        @assert TData ∈ SUPPORTED_EXTRA_BYTES_TYPES "Extra Bytes records not supported for data type $TData"
+        return new{TData}(options, name, no_data, min_val, max_val, scale, offset, description)
+    end
+end
+
+function ExtraBytes(options::UInt8, name::String, no_data::TData, min_val::TData, max_val::TData, scale::TData, offset::TData, description::String) where TData
+    return ExtraBytes{TData}(options, name, no_data, min_val, max_val, scale, offset, description)
+end
+
+Base.sizeof(::Type{ExtraBytes}) = 192
+Base.sizeof(::ExtraBytes) = Base.sizeof(ExtraBytes)
+
+@register_vlr_type ExtraBytes LAS_SPEC_USER_ID ID_EXTRABYTES
+
+# we can rely on this indexing safely since we're restricted to TData being in SUPPORTED_EXTRA_BYTES_TYPES
+data_code_from_type(::Type{TData}) where TData = (TData == Missing ? 0x00 : UInt8(indexin([TData], SUPPORTED_EXTRA_BYTES_TYPES)[1]))
+data_code_from_type(::ExtraBytes{TData}) where TData = data_code_from_type(TData)
+
+function data_type_from_code(code::Integer) 
+    @assert 0 ≤ code ≤ length(SUPPORTED_EXTRA_BYTES_TYPES) "Unsupported data code! Must be between 0 and $(length(SUPPORTED_EXTRA_BYTES_TYPES))"
+    code == 0 ? Missing : SUPPORTED_EXTRA_BYTES_TYPES[code]
+end
+
+name(e::ExtraBytes) = e.name
+data_type(e::ExtraBytes{TData}) where TData = TData
+no_data_flag(e::ExtraBytes) = Bool(e.options & 0x01)
+min_flag(e::ExtraBytes) = Bool(e.options & 0x02)
+max_flag(e::ExtraBytes) = Bool(e.options & 0x04)
+scale_flag(e::ExtraBytes) = Bool(e.options & 0x08)
+offset_flag(e::ExtraBytes) = Bool(e.options & 0x10)
+
+function get_extra_bytes_field(extra_bytes::SVector{N, T}) where {N, T <: ExtraBytes}
+    if N == 0
+        return missing
+    else
+        return NamedTuple{ntuple(i -> Symbol(get_name(extra_bytes[i])), N), ntuple(i -> data_type(extra_bytes[i]), N)}
+    end
+end
+
+function Base.read(io::IO, ::Type{ExtraBytes})
+    # ignore reserved
+    read(io, UInt16)
+    data_code = read(io, UInt8)
+    
+    # shouldn't be an "undocumented" Extra Bytes VLR on a read by definition
+    @assert data_code != 0 "Extra Bytes VLR labelled as undocumented even though it's documented?"
+
+    data_type = data_type_from_code(data_code)
+    options = read(io, UInt8)
+    name = readstring(io, 32)
+    # ignore unused
+    read(io, UInt32)
+    no_data = reinterpret(data_type, read(io, 8))[1]
+    # ignore deprecated1
+    read(io, 16)
+    min_value = reinterpret(data_type, read(io, 8))[1]
+    # ignore deprecated2
+    read(io, 16)
+    max_value = reinterpret(data_type, read(io, 8))[1]
+    # ignore deprecated3
+    read(io, 16)
+    scale = reinterpret(data_type, read(io, 8))[1]
+    # ignore deprecated4
+    read(io, 16)
+    offset = reinterpret(data_type, read(io, 8))[1]
+    # ignore deprecated5
+    read(io, 16)
+    description = readstring(io, 32)
+
+    return ExtraBytes{data_type}(options, name, no_data, min_value, max_value, scale, offset, description)
+end
+
+function Base.write(io::IO, extra_bytes::ExtraBytes{TData}) where TData
+    # reserved
+    write(io, zero(UInt16))
+    write(io, data_code_from_type(TData))
+    write(io, extra_bytes.options)
+    writestring(io, extra_bytes.name, 32)
+    # unused
+    write(io, zero(UInt32))
+    write(io, upcast_to_8_byte(extra_bytes.no_data))
+    # deprecated1
+    write(io, zeros(UInt8, 16))
+    # note: no_data, min, and max fields need to be upcast to 8-byte storage
+    write(io, upcast_to_8_byte(extra_bytes.min_val))
+    # deprecated2
+    write(io, zeros(UInt8, 16))
+    write(io, upcast_to_8_byte(extra_bytes.max_val))
+    # deprecated3
+    write(io, zeros(UInt8, 16))
+    write(io, upcast_to_8_byte(extra_bytes.scale))
+    # deprecated4
+    write(io, zeros(UInt8, 16))
+    write(io, upcast_to_8_byte(extra_bytes.offset))
+    # deprecated5
+    write(io, zeros(UInt8, 16))
+    writestring(io, extra_bytes.description, 32)
+end
 
 """
     $(TYPEDEF)
@@ -85,7 +217,7 @@ struct WaveformPacketDescriptor
 
     """The digitizer gain used to convert the raw digitized value to an absolute digitizer
     voltage using the formula:
-    𝑉 𝑂𝐿𝑇 𝑆 = 𝑂𝐹 𝐹 𝑆𝐸𝑇 + 𝐺𝐴𝐼𝑁 * 𝑅𝑎𝑤_𝑊 𝑎𝑣𝑒𝑓 𝑜𝑟𝑚_𝐴𝑚𝑝𝑙𝑖𝑡𝑢𝑑𝑒
+    𝑉𝑂𝐿𝑇𝑆 = 𝑂𝐹𝐹𝑆𝐸𝑇 + 𝐺𝐴𝐼𝑁 * 𝑅𝑎𝑤_𝑊𝑎𝑣𝑒𝑓𝑜𝑟𝑚_𝐴𝑚𝑝𝑙𝑖𝑡𝑢𝑑𝑒
     """
     digitizer_gain::Float64
 
