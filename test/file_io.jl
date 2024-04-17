@@ -62,6 +62,29 @@ end
     end
 end
 
+function check_laz_io(file_name::String, columns::NTuple{N, Symbol}) where N
+    las = load_las(file_name, columns)
+    mktempdir() do tmp
+        save_las(joinpath(tmp, "pc.laz"), las)
+        laz = load_las(joinpath(tmp, "pc.laz"), columns)
+        @test laz == las
+    end
+end
+
+@testset "LAZ I/O" begin
+    @testset "Legacy Specs" begin
+        check_laz_io(joinpath(@__DIR__, "test_files/example_1_1.las"), LAS.has_columns(LasPoint0))
+        check_laz_io(joinpath(@__DIR__, "test_files/example_1_2.las"), LAS.has_columns(LasPoint0))
+        check_laz_io(joinpath(@__DIR__, "test_files/example_1_3.las"), LAS.has_columns(LasPoint0))
+    end
+
+    @testset "LAS v1.4" begin
+        check_laz_io(joinpath(@__DIR__, "test_files/example_1_4_p0.las"), LAS.has_columns(LasPoint0))
+        check_laz_io(joinpath(@__DIR__, "test_files/example_1_4_p2.las"), LAS.has_columns(LasPoint0))
+        check_laz_io(joinpath(@__DIR__, "test_files/example_1_4_p6.las"), LAS.has_columns(LasPoint0))
+    end
+end
+
 # don't feel like importing the whole LinearAlgebra package for this one:
 norm(x) = sqrt(sum(x.^2))
 
