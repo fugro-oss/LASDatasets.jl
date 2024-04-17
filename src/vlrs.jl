@@ -131,7 +131,7 @@ Register a new VLR data type `type` by associating it with an official `user_id`
 macro register_vlr_type(type, user_id, record_ids)
     return quote
         # restrict types for inputs
-        if !($(esc(type)) isa DataType)
+        if !($(esc(type)) isa DataType) && !($(esc(type)) isa UnionAll)
             throw(AssertionError("Type must be a DataType, not $(typeof($(esc(type))))"))
         end
         if !($(esc(user_id)) isa AbstractString)
@@ -232,3 +232,8 @@ is_srs(vlr::LasVariableLengthRecord) = vlr.record_id in (
     ID_GEOKEYDIRECTORYTAG,
     ID_GEODOUBLEPARAMSTAG,
     ID_GEOASCIIPARAMSTAG)
+
+function extract_vlr_type(vlrs::Vector{<:LasVariableLengthRecord}, user_id::String, id::Integer)
+    matches_ids = findall(vlr -> (get_user_id(vlr) == user_id) && (get_record_id(vlr) == id), vlrs)
+    return vlrs[matches_ids]
+end
