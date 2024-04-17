@@ -28,7 +28,7 @@ function save_las(file_name::AbstractString, pointcloud::AbstractVector{<:NamedT
     end
 end
 
-function save_las(file_name::AbstractString, las::LasContent)
+function save_las(file_name::AbstractString, las::LasDataset)
     open_func = get_open_func(file_name)
     open_func(file_name, "w") do io
         write_las(io, las)
@@ -79,10 +79,10 @@ function write_las(io::IO, pointcloud::AbstractVector{<:NamedTuple},
                     scale::Real) where {TPoint}
     # automatically construct a header that's consistent with the data and point format we've supplied
     header = make_consistent_header(pointcloud, point_format, vlrs, evlrs, scale)
-    write_las(io, LasContent(header, pointcloud, vlrs, evlrs, user_defined_bytes))
+    write_las(io, LasDataset(header, pointcloud, vlrs, evlrs, user_defined_bytes))
 end
 
-function write_las(io::IO, las::LasContent)
+function write_las(io::IO, las::LasDataset)
     header = get_header(las)
 
     pc = get_pointcloud(las)

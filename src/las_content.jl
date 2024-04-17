@@ -5,7 +5,7 @@ A wrapper around a LAS dataset. Contains point cloud data in tabular format as w
 
 $(TYPEDFIELDS)
 """
-mutable struct LasContent
+mutable struct LasDataset
     """The header from the LAS file the points were extracted from"""
     const header::LasHeader
     
@@ -24,7 +24,7 @@ mutable struct LasContent
     """Extra user bytes packed between the Header block and the first VLR of the source LAS file"""
     const user_defined_bytes::Vector{UInt8}
 
-    function LasContent(header::LasHeader,
+    function LasDataset(header::LasHeader,
                         pointcloud::Table,
                         vlrs::Vector{<:LasVariableLengthRecord},
                         evlrs::Vector{<:LasVariableLengthRecord},
@@ -33,7 +33,7 @@ mutable struct LasContent
         # do a few checks to make sure everything is consistent between the header and other data
         point_format_from_table = get_point_format(pointcloud)
         point_format_from_header = point_format(header)
-        matching_formats = point_format_from_table == point_format_from_header 
+        matching_formats = point_format_from_table == point_format_from_header
         # if the formats don't match directly, at least make sure all our table columns are the same as the header columns (so it can be a subset)
         cols_in_table_are_subset = all(has_columns(point_format_from_table) .∈ Ref(has_columns(point_format_from_header)))
         @assert matching_formats || cols_in_table_are_subset "Point format in header $(point_format_from_header) doesn't match point format in Table $(point_format_from_table)"
@@ -81,12 +81,12 @@ mutable struct LasContent
     end
 end
 
-get_header(las::LasContent) = las.header
-get_vlrs(las::LasContent) = las.vlrs
-get_evlrs(las::LasContent) = las.evlrs
-get_user_defined_bytes(las::LasContent) = las.user_defined_bytes
+get_header(las::LasDataset) = las.header
+get_vlrs(las::LasDataset) = las.vlrs
+get_evlrs(las::LasDataset) = las.evlrs
+get_user_defined_bytes(las::LasDataset) = las.user_defined_bytes
 
-function get_pointcloud(las::LasContent)
+function get_pointcloud(las::LasDataset)
     if ismissing(las._user_data)
         return las.pointcloud
     else
@@ -94,7 +94,7 @@ function get_pointcloud(las::LasContent)
     end
 end
 
-function Base.show(io::IO, las::LasContent)
+function Base.show(io::IO, las::LasDataset)
     println(io, "LAS Dataset")
     println(io, "\tNum Points: $(length(get_pointcloud(las)))")
     println(io, "\tPoint Format: $(point_format(get_header(las)))")
@@ -107,7 +107,7 @@ function Base.show(io::IO, las::LasContent)
     println(io, "\tUser Bytes: $(length(get_user_defined_bytes(las)))")
 end
 
-function Base.:(==)(contA::LasContent, contB::LasContent)
+function Base.:(==)(contA::LasDataset, contB::LasDataset)
     # need to individually check that the header, point cloud, (E)VLRs and user bytes are all the same
     headers_equal = get_header(contA) == get_header(contB)
     pcA = get_pointcloud(contA)
@@ -146,7 +146,7 @@ end
 Add a `vlr` into the set of VLRs in a LAS dataset `las`.
 Note that this will modify the header content of `las`, including updating its LAS version to v1.4 if `vlr` is extended
 """
-function add_vlr!(las::LasContent, vlr::LasVariableLengthRecord)
+function add_vlr!(las::LasDataset, vlr::LasVariableLengthRecord)
     if is_extended(vlr) && isempty(get_evlrs(las))
         # evlrs only supported in LAS 1.4
         set_las_version!(get_header(las), v"1.4")
@@ -188,7 +188,7 @@ end
 Remove a `vlr` from set of VLRs in a LAS dataset `las`.
 Note that this will modify the header content of `las`
 """
-function remove_vlr!(las::LasContent, vlr::LasVariableLengthRecord)
+function remove_vlr!(las::LasDataset, vlr::LasVariableLengthRecord)
     header = get_header(las)
     if is_extended(vlr)
         set_num_evlr!(header, number_of_evlrs(header) - 1)
@@ -216,7 +216,7 @@ end
 
 Add a column with a `name` and set of `values` to a `las` dataset
 """
-function add_column!(las::LasContent, name::Symbol, values::AbstractVector{T}) where T
+function add_column!(las::LasDataset, name::Symbol, values::AbstractVector{T}) where T
     if ismissing(las._user_data)
         las._user_data = FlexTable(NamedTuple{ (name,) }( (values,) ))
     else

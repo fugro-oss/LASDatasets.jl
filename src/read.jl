@@ -115,7 +115,7 @@ function read_las_data(io::TIO, required_columns::TTuple=DEFAULT_LAS_COLUMNS;
 
     evlrs = Vector{LasVariableLengthRecord}(map(_ -> read(io, LasVariableLengthRecord, true), 1:number_of_evlrs(header)))
 
-    LasContent(header, as_table, vlrs, evlrs, user_defined_bytes)
+    LasDataset(header, as_table, vlrs, evlrs, user_defined_bytes)
 end
 
 function make_table(records::Vector{PointRecord{TPoint}}, required_columns::TTuple, xyz::SpatialInfo) where {TPoint <: LasPoint, TTuple}
