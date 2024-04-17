@@ -125,8 +125,8 @@ function Base.:(==)(contA::LasContent, contB::LasContent)
     vlrs_equal = all([
         length(vlrsA) == length(vlrsB),
         # account for fact that VLRS might be same but in different order
-        all(indexin(vlrsA, vlrsB) .!= nothing),
-        all(indexin(vlrsB, vlrsA) .!= nothing)
+        all(map(vlr -> any(vlrsB .== Ref(vlr)), vlrsA)),
+        all(map(vlr -> any(vlrsA .== Ref(vlr)), vlrsB)),
     ])
     evlrsA = get_evlrs(contA)
     evlrsB = get_evlrs(contB)
@@ -137,7 +137,6 @@ function Base.:(==)(contA::LasContent, contB::LasContent)
         all(indexin(evlrsB, evlrsA) .!= nothing)
     ])
     user_bytes_equal = (get_user_defined_bytes(contA) == get_user_defined_bytes(contB))
-
     return all([headers_equal, pcs_equal, vlrs_equal, evlrs_equal, user_bytes_equal])
 end
 

@@ -113,7 +113,7 @@ function Base.read(io::IO, ::Type{GeoKeys})
     )
 end
 
-@register_vlr_type(GeoKeys, LAS_PROJ_USER_ID, ID_GEOKEYDIRECTORYTAG)
+@register_vlr_type GeoKeys LAS_PROJ_USER_ID ID_GEOKEYDIRECTORYTAG
 
 """
     $(TYPEDEF)
@@ -130,7 +130,7 @@ Base.sizeof(data::GeoDoubleParamsTag) = sizeof(data.double_params)
 
 Base.write(io::IO, data::GeoDoubleParamsTag) = write(io, data.double_params)
 
-@register_vlr_type(GeoDoubleParamsTag, LAS_PROJ_USER_ID, ID_GEODOUBLEPARAMSTAG)
+@register_vlr_type GeoDoubleParamsTag LAS_PROJ_USER_ID ID_GEODOUBLEPARAMSTAG
 
 function read_vlr_data(io::IO, ::Type{GeoDoubleParamsTag}, nb::Integer)
     double_params = zeros(nb ÷ 8)
@@ -155,7 +155,7 @@ Base.:(==)(t1::GeoAsciiParamsTag, t2::GeoAsciiParamsTag) = (t1.ascii_params == t
 Base.sizeof(data::GeoAsciiParamsTag) = data.nb
 Base.write(io::IO, data::GeoAsciiParamsTag) = writestring(io, data.ascii_params, data.nb)
 
-@register_vlr_type(GeoAsciiParamsTag, LAS_PROJ_USER_ID, ID_GEOASCIIPARAMSTAG)
+@register_vlr_type GeoAsciiParamsTag LAS_PROJ_USER_ID ID_GEOASCIIPARAMSTAG
 
 function read_vlr_data(io::IO, ::Type{GeoAsciiParamsTag}, nb::Integer)
     ascii_params = readstring(io, nb)
@@ -196,7 +196,7 @@ function Base.write(io::IO, ogc_wkt::OGC_WKT)
     writestring(io, ogc_wkt.wkt_str, ogc_wkt.nb)
 end
 
-@register_vlr_type(OGC_WKT, LAS_PROJ_USER_ID, ID_OGCWKTTAG)
+@register_vlr_type OGC_WKT LAS_PROJ_USER_ID ID_OGCWKTTAG
 
 function read_vlr_data(io::IO, ::Type{OGC_WKT}, nb::Int)
     wkt_str = readstring(io, nb)

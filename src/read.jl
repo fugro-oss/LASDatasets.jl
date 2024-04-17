@@ -11,7 +11,9 @@ function load_las(file_name::AbstractString,
     fields::TFields = DEFAULT_LAS_COLUMNS;
     kwargs...) where {TFields}
 
-    las = open_las(file_name, "r") do io
+    open_func = get_open_func(file_name)
+
+    las = open_func(file_name, "r") do io
         read_las_data(io, fields; kwargs...)
     end
 
@@ -35,10 +37,15 @@ end
 Ingest a LAS header from a file
 """
 function load_header(file_name::AbstractString)
-    header = open_las(file_name, "r") do io
-        read(io, LasHeader)
+    if is_laz(file_name)
+        header, _, _ = read_laz_header_and_vlrs(file_name)
+        return header
+    else
+        header = open_las(file_name, "r") do io
+            read(io, LasHeader)
+        end
+        return header
     end
-    return header
 end
 
 load_header(io::IO) = read(seek(io, 0), LasHeader)
@@ -56,18 +63,16 @@ function load_vlrs(file_name::AbstractString, header::LasHeader)
 end
 
 function load_vlrs(file_name::AbstractString)
-    vlrs = open_las(file_name, "r") do io
-        header = read(io, LasHeader)
-        load_vlrs(io, header)
+    if is_laz(file_name)
+        _, vlrs, _ = read_laz_header_and_vlrs(file_name)
+        return vlrs
+    else
+        vlrs = open_las(file_name, "r") do io
+            header = read(io, LasHeader)
+            load_vlrs(io, header)
+        end
+        return vlrs
     end
-    return vlrs
-end
-
-function load_vlrs(io::IO, header::LasHeader)
-    vlr_start = header_size(header)
-    seek(io, vlr_start)
-    num_vlrs = number_of_vlrs(header)
-    map(_ -> read(io, LasVariableLengthRecord), 1:num_vlrs)
 end
 
 """
@@ -121,8 +126,9 @@ end
 
 function make_table(records::Vector{ExtendedPointRecord{TPoint, Names, Types}}, required_columns::TTuple, xyz::SpatialInfo) where {TPoint <: LasPoint, Names, Types, TTuple}
     las_columns = (isnothing(required_columns) || isempty(required_columns)) ? has_columns(TPoint) : filter(c -> c in required_columns, has_columns(TPoint))
+    user_fields = filter(field -> field ∈ required_columns, Names)
     extractors = map(c -> Extractor{c}(xyz), las_columns)
-    Table(NamedTuple{ (las_columns..., Names...,) }( (map(e -> get_column.(Ref(e), records), extractors)..., map(field -> getproperty.(getproperty.(records, :user_fields), field), Names)...) ))
+    Table(NamedTuple{ (las_columns..., user_fields...,) }( (map(e -> get_column.(Ref(e), records), extractors)..., map(field -> getproperty.(getproperty.(records, :user_fields), field), user_fields)...) ))
 end
 
 function convert_units!(as_table::AbstractVector{<:NamedTuple}, vlrs::Vector{LasVariableLengthRecord}, convert_x_y_z_units::Union{Missing, Bool}, convert_z_units::Union{Missing, Bool})

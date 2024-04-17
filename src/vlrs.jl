@@ -3,7 +3,6 @@
 
 A variable length record included in a LAS file. This stores a particular data type `TData` in the record, which can be
 a known VLR such as a WKT transform or a custom struct.
-    
 To properly define I/O methods for VLR's of custom structs, you must register which user and record ID's this struct type 
 will use using 
 

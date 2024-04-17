@@ -520,9 +520,9 @@ ycoord(p::LasPoint, h::LasHeader) = ycoord(p, spatial_info(h))
 "Z coordinate (Float64), apply scale and offset according to the header"
 zcoord(p::LasPoint, h::LasHeader) = zcoord(p, spatial_info(h))
 
-xcoord(p::LasPoint, xyz::SpatialInfo) = muladd(p.x, xyz.scale.x, xyz.offset.x)
-ycoord(p::LasPoint, xyz::SpatialInfo) = muladd(p.y, xyz.scale.y, xyz.offset.y)
-zcoord(p::LasPoint, xyz::SpatialInfo) = muladd(p.z, xyz.scale.z, xyz.offset.z)
+xcoord(p::LasPoint, xyz::SpatialInfo) = p.x * xyz.scale.x + xyz.offset.x
+ycoord(p::LasPoint, xyz::SpatialInfo) = p.y * xyz.scale.y + xyz.offset.y
+zcoord(p::LasPoint, xyz::SpatialInfo) = p.z * xyz.scale.z + xyz.offset.z
 
 # inverse functions of the above
 "X value (Int32), as represented in the point data, reversing the offset and scale from the header"

@@ -22,18 +22,15 @@ function save_las(file_name::AbstractString, pointcloud::AbstractVector{<:NamedT
                         user_defined_bytes::Vector{UInt8} = UInt8[],
                         scale::Real = POINT_SCALE,
                         kwargs...)
-    open_las(file_name, "w") do io
+    open_func = get_open_func(file_name)
+    open_func(file_name, "w") do io
         write_las(io, pointcloud, vlrs, evlrs, user_defined_bytes, scale)
     end
 end
 
-"""
-    $(TYPEDSIGNATURES)
-
-Save a `las` dataset to a file `file_name`
-"""
 function save_las(file_name::AbstractString, las::LasContent)
-    open_las(file_name, "w") do io
+    open_func = get_open_func(file_name)
+    open_func(file_name, "w") do io
         write_las(io, las)
     end
 end
@@ -44,9 +41,9 @@ function save_las(file_name::AbstractString,
                     vlrs::Vector{<:LasVariableLengthRecord} = LasVariableLengthRecord[], 
                     evlrs::Vector{<:LasVariableLengthRecord} = LasVariableLengthRecord[], 
                     user_defined_bytes::Vector{UInt8} = UInt8[],
-                    scale::Real = POINT_SCALE,
-                    kwargs...) where {TRecord <: LasRecord}
-    open_las(file_name, "w") do io
+                    scale::Real = POINT_SCALE) where {TRecord <: LasRecord}
+    open_func = get_open_func(file_name)
+    open_func(file_name, "w") do io
         write_las(io, header, point_records, vlrs, evlrs, user_defined_bytes, scale)
     end
 end
