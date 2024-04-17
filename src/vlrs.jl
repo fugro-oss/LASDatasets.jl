@@ -75,8 +75,10 @@ function check_data_against_record_id(data, user_id::String, record_id::Integer,
                 @assert record_id == ID_GEOASCIIPARAMSTAG "Record ID for GeoAsciiParamsTag must be $(ID_GEOASCIIPARAMSTAG)"
             elseif data_type == ClassificationLookup
                 @assert record_id == ID_CLASSLOOKUP "Record ID for Classification Lookup must be $(ID_CLASSLOOKUP)"
-            elseif data_type == String
-                @assert record_id == 3 "Record ID for text area description must be $(ID_TEXTDESCRIPTION)"
+            elseif data_type == TextAreaDescription
+                @assert record_id == ID_TEXTDESCRIPTION "Record ID for text area description must be $(ID_TEXTDESCRIPTION)"
+            elseif data_type <: ExtraBytes
+                @assert record_id == ID_EXTRABYTES "Record ID for Extra Bytes must be $(ID_EXTRABYTES)"
             elseif typeof(data) == WaveformPacketDescriptor
                 @assert 99 < record_id < 355 "Waveform packet descriptors must have record IDs between 100 and 354"
             end
