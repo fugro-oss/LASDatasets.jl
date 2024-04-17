@@ -265,7 +265,12 @@ end
 
 get_column(extractor::Extractor, record::LasRecord) = get_column(extractor, get_point(record))
 
-function record_format(header::LasHeader, extra_bytes::Vector{<:ExtraBytes})
+"""
+    $(TYPEDSIGNATURES)
+
+Get the appropriate LAS record format for a LAS `header` and a (possibly empty) est of `extra_bytes` that document any optional user fields to include
+"""
+function record_format(header::LasHeader, extra_bytes::Vector{<:ExtraBytes} = ExtraBytes[])
     point_type = point_format(header)
     record_length = point_record_length(header)
     num_point_bytes = byte_size(point_type)

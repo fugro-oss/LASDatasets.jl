@@ -1,23 +1,39 @@
 """
-    save_las(file_name, pointcloud)
-Saves a pointcloud (TypedTable) to LAS or LAZ. Methods figures out itself which LAS version and Point format to use.
-For more control over LAS version and point formats, use `write_las`.
+    $(TYPEDSIGNATURES)
+
+Saves a pointcloud to LAS or LAZ. The appropriate LAS version and point format is inferred from the contents of your point cloud
+
+# Arguments
+* `file_name` : Name of the LAS file to save the data into
+* `pointcloud` : Point cloud data in a tabular format
+
+### Keyword Arguments
+* `vlrs` : Collection of Variable Length Records to write to the LAS file, default `LasVariableLengthRecord[]`
+* `evlrs` : Collection of Extended Variable Length Records to write to the LAS file, default `LasVariableLengthRecord[]`
+* `user_defined_bytes` : Any user-defined bytes to write in between the VLRs and point records, default `UInt8[]`
+* `scale` : Scaling factor applied to points on writing, default `LAS.POINT_SCALE`
+
+---
+$(METHODLIST)
 """
 function save_las(file_name::AbstractString, pointcloud::AbstractVector{<:NamedTuple}; 
-                        vlrs::Vector{<:LasVariableLengthRecord} = Vector{LasVariableLengthRecord}(),
-                        evlrs::Vector{<:LasVariableLengthRecord} = Vector{LasVariableLengthRecord}(),
-                        user_defined_bytes::Vector{UInt8} = Vector{UInt8}(),
+                        vlrs::Vector{<:LasVariableLengthRecord} = LasVariableLengthRecord[], 
+                        evlrs::Vector{<:LasVariableLengthRecord} = LasVariableLengthRecord[], 
+                        user_defined_bytes::Vector{UInt8} = UInt8[],
                         scale::Real = POINT_SCALE,
                         kwargs...)
-    open_func = get_open_func(file_name)
-    open_func(file_name, "w") do io
+    open_las(file_name, "w") do io
         write_las(io, pointcloud, vlrs, evlrs, user_defined_bytes, scale)
     end
 end
 
+"""
+    $(TYPEDSIGNATURES)
+
+Save a `las` dataset to a file `file_name`
+"""
 function save_las(file_name::AbstractString, las::LasContent)
-    open_func = get_open_func(file_name)
-    open_func(file_name, "w") do io
+    open_las(file_name, "w") do io
         write_las(io, las)
     end
 end
@@ -25,12 +41,12 @@ end
 function save_las(file_name::AbstractString, 
                     header::LasHeader, 
                     point_records::Vector{TRecord}, 
-                    vlrs::Vector{<:LasVariableLengthRecord} = Vector{LasVariableLengthRecord}(), 
-                    evlrs::Vector{<:LasVariableLengthRecord} = Vector{LasVariableLengthRecord}(), 
-                    user_defined_bytes::Vector{UInt8},
-                    scale::Real) where {TRecord <: LasRecord}
-    open_func = get_open_func(file_name)
-    open_func(file_name, "w") do io
+                    vlrs::Vector{<:LasVariableLengthRecord} = LasVariableLengthRecord[], 
+                    evlrs::Vector{<:LasVariableLengthRecord} = LasVariableLengthRecord[], 
+                    user_defined_bytes::Vector{UInt8} = UInt8[],
+                    scale::Real = POINT_SCALE,
+                    kwargs...) where {TRecord <: LasRecord}
+    open_las(file_name, "w") do io
         write_las(io, header, point_records, vlrs, evlrs, user_defined_bytes, scale)
     end
 end
@@ -46,9 +62,17 @@ end
 
 
 """
-    write_las(io::IO, ::Type{TVersion}, pointformat::Type{TPoint}, pointcloud::TData, vlrs::Vector{<:LasVariableLengthRecord}, spatial_info::SpatialInfo) where {TVersion <: LasVersion, TPoint, TData}
-Uses `laspoint(TPoint, item::eltype(pointcloud), spatial_info::SpatialInfo)` to transform your data into `TPoint` items, which must be `LasPoint`s.
-For now, make sure yourself you pick the correct LasVersion that supports the point format you chose.
+    $(TYPEDSIGNATURES)
+
+Write a pointcloud and additional VLR's and user-defined bytes to an IO stream in a LAS format
+
+# Arguments
+* `io` : IO channel to write the data to
+* `pointcloud` : Pointcloud data in a tabular format to write
+* `vlrs` : Collection of Variable Length Records to write to `io`
+* `evlrs` : Collection of Extended Variable Length Records to write to `io`
+* `user_defined_bytes` : Any user-defined bytes to write in between the VLRs and point records
+* `scale` : Scaling factor applied to points on writing
 """
 function write_las(io::IO, pointcloud::AbstractVector{<:NamedTuple}, 
                     point_format::Type{TPoint},
@@ -56,6 +80,7 @@ function write_las(io::IO, pointcloud::AbstractVector{<:NamedTuple},
                     evlrs::Vector{<:LasVariableLengthRecord}, 
                     user_defined_bytes::Vector{UInt8},
                     scale::Real) where {TPoint}
+    # automatically construct a header that's consistent with the data and point format we've supplied
     header = make_consistent_header(pointcloud, point_format, vlrs, evlrs, scale)
     write_las(io, LasContent(header, pointcloud, vlrs, evlrs, user_defined_bytes))
 end
@@ -89,6 +114,11 @@ function write_las(io::IO, las::LasContent)
     return nothing
 end
 
+"""
+    $(TYPEDSIGNATURES)
+
+Construct a LAS header that is consistent with given `pointcloud` data in a specific LAS `point_format`, coupled with sets of `vlrs` and `evlrs`
+"""
 function make_consistent_header(pointcloud::AbstractVector{<:NamedTuple}, 
                                 point_format::Type{TPoint},
                                 vlrs::Vector{<:LasVariableLengthRecord}, 
@@ -129,6 +159,11 @@ function make_consistent_header(pointcloud::AbstractVector{<:NamedTuple},
     return header
 end
 
+"""
+    $(TYPEDSIGNATURES)
+
+Construct an array of bytes that correctly encodes the information stored in a set of LAS `records` according to the spec
+"""
 function get_record_bytes(records::StructVector{TRecord}) where {TRecord <: LasRecord}
     point_format = get_point_format(TRecord)
     point_fields = collect(fieldnames(point_format))

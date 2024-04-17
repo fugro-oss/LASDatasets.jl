@@ -26,8 +26,14 @@ const ID_GEOASCIIPARAMSTAG = UInt16(34737)
 const ID_OGCWKTTAG = UInt16(2112)
 const ID_CLASSLOOKUP = UInt16(0)
 const ID_TEXTDESCRIPTION = UInt16(3)
+const ID_EXTRABYTES = UInt16(4)
 const ID_SUPERSEDED = UInt16(7)
 const ID_WAVEFORMPACKETDATA = UInt16(65535)
 
+const DEFAULT_LAS_COLUMNS = (:position, :intensity, :classification, :returnnumber, :numberofreturns, :color, :point_source_id, :gps_time, :overlap)
+const ALL_LAS_COLUMNS = SVector{0,Symbol}()
+
 POINT_SCALE = 0.0001
 global const _VLR_TYPE_MAP = Dict()
+
+const SUPPORTED_EXTRA_BYTES_TYPES = [UInt8, Int8, UInt16, Int16, UInt32, Int32, UInt64, Int64, Float32, Float64]
