@@ -24,7 +24,7 @@ include("points.jl")
 include("header.jl")
 include("parse_points.jl")
 include("records.jl")
-include("las_content.jl")
+include("dataset.jl")
 include("read.jl")
 include("write.jl")
 
