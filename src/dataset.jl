@@ -152,19 +152,6 @@ function add_vlr!(las::LasDataset, vlr::LasVariableLengthRecord)
         set_las_version!(get_header(las), v"1.4")
     end
 
-    existing_vlrs = vcat(get_vlrs(las), get_evlrs(las))
-    any_superseded = findfirst(this_vlr -> get_record_id(this_vlr) == ID_SUPERSEDED, existing_vlrs)
-
-    # check if any of the existing VLRs have the same record ID - if so, will need to set to superseded
-    for existing_vlr ∈ existing_vlrs
-        if get_record_id(existing_vlr) == get_record_id(vlr)
-            # according to the LAS 1.4 spec we can only have 1 superseded VLR which seems weird but oh well
-            @assert isnothing(any_superseded) "Can only have one superseded record per LAS file"
-            set_superseded!(existing_vlr)
-            break
-        end
-    end
-
     header = get_header(las)
     
     if is_extended(vlr)
@@ -205,32 +192,43 @@ function remove_vlr!(las::LasDataset, vlr::LasVariableLengthRecord)
         matching_idx = findfirst(vlrs .== Ref(vlr))
         @assert !isnothing(matching_idx) "Couldn't find VLR in LAS"
         deleteat!(vlrs, matching_idx)
-        if isempty(vlrs)
-            header.data_offset -= sizeof(vlr)
-        end
+        header.data_offset -= sizeof(vlr)
+        @assert header.data_offset > 0 "Inconsistent data configuration! Got data offset of $(header.data_offset) after removing VLR"
     end
+end
+
+function set_superseded!(las::LasDataset, vlr::LasVariableLengthRecord)
+    vlrs = is_extended(vlr) ? get_evlrs(las) : get_vlrs(las)
+    matching_idx = findfirst(vlrs .== Ref(vlr))
+    @assert !isnothing(matching_idx) "Couldn't find VLR in LAS"
+    set_superseded!(vlrs[matching_idx])
 end
 
 """
     $(TYPEDSIGNATURES)
 
-Add a column with a `name` and set of `values` to a `las` dataset
+Add a column with a `column` and set of `values` to a `las` dataset
 """
-function add_column!(las::LasDataset, name::Symbol, values::AbstractVector{T}) where T
+function add_column!(las::LasDataset, column::Symbol, values::AbstractVector{T}) where T
+    @assert length(values) == length(las.pointcloud) "Column size $(length(values)) inconsistent with number of points $(length(las.pointcloud))"
     if ismissing(las._user_data)
-        las._user_data = FlexTable(NamedTuple{ (name,) }( (values,) ))
+        las._user_data = FlexTable(NamedTuple{ (column,) }( (values,) ))
     else
-        Base.setproperty!(las._user_data, name, values)
+        # make sure if we're replacing a column we correctly update the header size
+        if column ∈ columnnames(las._user_data)
+            las.header.data_record_length -= sizeof(eltype(getproperty(las._user_data, column)))
+        end
+        Base.setproperty!(las._user_data, column, values)
     end
     las.header.data_record_length += sizeof(T)
     vlrs = get_vlrs(las)
     extra_bytes_vlrs = extract_vlr_type(vlrs, LAS_SPEC_USER_ID, ID_EXTRABYTES)
-    matching_extra_bytes_vlr = findfirst(Symbol.(name.(extra_bytes_vlrs)) .== name)
+    matching_extra_bytes_vlr = findfirst(Symbol.(name.(get_data.(extra_bytes_vlrs))) .== column)
     if !isnothing(matching_extra_bytes_vlr)
-        remove_vlr!(las, matching_extra_bytes_vlr)
+        remove_vlr!(las, extra_bytes_vlrs[matching_extra_bytes_vlr])
     end
-    extra_bytes = ExtraBytes(0x00, String(name), zero(T), zero(T), zero(T), zero(T), zero(T), "Custom Column $(name)")
-    extra_bytes_vlr = LasVariableLengthRecord(LAS_SPEC_USER_ID, ID_EXTRABYTES, String(name), extra_bytes)
+    extra_bytes = ExtraBytes(0x00, String(column), zero(T), zero(T), zero(T), zero(T), zero(T), "Custom Column $(column)")
+    extra_bytes_vlr = LasVariableLengthRecord(LAS_SPEC_USER_ID, ID_EXTRABYTES, String(column), extra_bytes)
     add_vlr!(las, extra_bytes_vlr)
     nothing
 end

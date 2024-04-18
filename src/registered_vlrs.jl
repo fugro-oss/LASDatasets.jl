@@ -58,6 +58,7 @@ end
 
 @register_vlr_type TextAreaDescription LAS_SPEC_USER_ID ID_TEXTDESCRIPTION
 read_vlr_data(io::IO, ::Type{TextAreaDescription}, nb::Integer) = TextAreaDescription(readstring(io, nb))
+Base.sizeof(desc::TextAreaDescription) = Base.sizeof(desc.txt)
 
 """
     $(TYPEDEF)

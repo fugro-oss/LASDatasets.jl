@@ -206,6 +206,7 @@ end
 get_point_format(::Type{UndocPointRecord{TPoint, N}}) where {TPoint, N} = TPoint
 get_num_user_field_bytes(::Type{UndocPointRecord}) = 0
 get_num_undocumented_bytes(::Type{UndocPointRecord{TPoint, N}}) where {TPoint, N} = N
+get_undocumented_bytes(record::UndocPointRecord) = record.undoc_bytes
 
 """
     $(TYPEDEF)
@@ -234,6 +235,7 @@ get_num_user_field_bytes(::Type{TRecord}) where {TRecord <: FullRecord} = sum(ge
 get_user_field_names(::Type{FullRecord{TPoint, Names, Types, N}}) where {TPoint, Names, Types, N} = collect(Names)
 get_user_field_types(::Type{FullRecord{TPoint, Names, Types, N}}) where {TPoint, Names, Types, N} = fieldnames(Types)
 get_num_undocumented_bytes(::Type{FullRecord{TPoint, Names, Types, N}}) where {TPoint, Names, Types, N} = N
+get_undocumented_bytes(record::FullRecord) = record.undoc_bytes
 
 function Base.read(io::IO, ::Type{FullRecord{TPoint, Names, Types, N}}) where {TPoint <: LasPoint, Names, Types, N}
     point = read_struct(io, TPoint)

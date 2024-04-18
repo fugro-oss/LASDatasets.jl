@@ -54,6 +54,8 @@ load_header(io::IO) = read(seek(io, 0), LasHeader)
     $(TYPEDSIGNATURES)
 
 Ingest a set of variable length records from a LAS file
+
+$(METHODLIST)
 """
 function load_vlrs(file_name::AbstractString, header::LasHeader)
     vlrs = open_las(file_name, "r") do io
@@ -73,6 +75,10 @@ function load_vlrs(file_name::AbstractString)
         end
         return vlrs
     end
+end
+
+function load_vlrs(io::IO, header::LasHeader)
+    Vector{LasVariableLengthRecord}(map(_ -> read(io, LasVariableLengthRecord, false), 1:number_of_vlrs(header)))
 end
 
 """
@@ -96,7 +102,7 @@ function read_las_data(io::TIO, required_columns::TTuple=DEFAULT_LAS_COLUMNS;
 
     @assert number_of_points(header) > 0 "Las file has no points!"
 
-    vlrs = Vector{LasVariableLengthRecord}(map(_ -> read(io, LasVariableLengthRecord, false), 1:number_of_vlrs(header)))
+    vlrs = load_vlrs(io, header)
 
     vlr_length = header.n_vlr == 0 ? 0 : sum(sizeof.(vlrs))
     pos = header.header_size + vlr_length
@@ -119,16 +125,42 @@ function read_las_data(io::TIO, required_columns::TTuple=DEFAULT_LAS_COLUMNS;
 end
 
 function make_table(records::Vector{PointRecord{TPoint}}, required_columns::TTuple, xyz::SpatialInfo) where {TPoint <: LasPoint, TTuple}
-    las_columns = (isnothing(required_columns) || isempty(required_columns)) ? has_columns(TPoint) : filter(c -> c in required_columns, has_columns(TPoint))
-    extractors = map(c -> Extractor{c}(xyz), las_columns)
+    las_columns, extractors = get_cols_and_extractors(TPoint, required_columns, xyz)
     Table(NamedTuple{ (las_columns...,) }( (map(e -> get_column.(Ref(e), records), extractors)...,) ))
 end
 
 function make_table(records::Vector{ExtendedPointRecord{TPoint, Names, Types}}, required_columns::TTuple, xyz::SpatialInfo) where {TPoint <: LasPoint, Names, Types, TTuple}
-    las_columns = (isnothing(required_columns) || isempty(required_columns)) ? has_columns(TPoint) : filter(c -> c in required_columns, has_columns(TPoint))
+    las_columns, extractors = get_cols_and_extractors(TPoint, required_columns, xyz)
     user_fields = filter(field -> field ∈ required_columns, Names)
+    Table(NamedTuple{ (las_columns..., user_fields...,) }( (
+        map(e -> get_column.(Ref(e), records), extractors)..., 
+        map(field -> getproperty.(getproperty.(records, :user_fields), field), user_fields)...
+    ) ))
+end
+
+function make_table(records::Vector{UndocPointRecord{TPoint, N}}, required_columns::TTuple, xyz::SpatialInfo) where {TPoint <: LasPoint, N, TTuple}
+    las_columns, extractors = get_cols_and_extractors(TPoint, required_columns, xyz)
+    Table(NamedTuple{ (las_columns..., :undocumented_bytes) }( (map(e -> get_column.(Ref(e), records), extractors)..., get_undocumented_bytes.(records)) ))
+end
+
+function make_table(records::Vector{FullRecord{TPoint, Names, Types, N}}, required_columns::TTuple, xyz::SpatialInfo) where {TPoint <: LasPoint, Names, Types, N, TTuple}
+    las_columns, extractors = get_cols_and_extractors(TPoint, required_columns, xyz)
+    user_fields = filter(field -> field ∈ required_columns, Names)
+    Table(NamedTuple{ (las_columns..., user_fields..., :undocumented_bytes) }( (
+            map(e -> get_column.(Ref(e), records), extractors)..., 
+            map(field -> getproperty.(getproperty.(records, :user_fields), field), user_fields)..., 
+            get_undocumented_bytes.(records)
+        ) ))
+end
+
+function get_cols_and_extractors(::Type{TPoint}, required_columns::TTuple, xyz::SpatialInfo) where {TPoint <: LasPoint, TTuple}
+    las_columns = if isnothing(required_columns) || isempty(required_columns)
+        has_columns(TPoint)
+    else
+        filter(c -> c in required_columns, has_columns(TPoint))
+    end
     extractors = map(c -> Extractor{c}(xyz), las_columns)
-    Table(NamedTuple{ (las_columns..., user_fields...,) }( (map(e -> get_column.(Ref(e), records), extractors)..., map(field -> getproperty.(getproperty.(records, :user_fields), field), user_fields)...) ))
+    return las_columns, extractors
 end
 
 function convert_units!(as_table::AbstractVector{<:NamedTuple}, vlrs::Vector{LasVariableLengthRecord}, convert_x_y_z_units::Union{Missing, Bool}, convert_z_units::Union{Missing, Bool})

@@ -408,6 +408,10 @@ function set_point_data_offset!(header::LasHeader, offset::Integer)
     header.data_offset = UInt32(offset)
 end
 
+function set_point_format!(header::LasHeader, id::Integer)
+    header.data_format_id = UInt8(id)
+end
+
 function set_point_record_length!(header::LasHeader, length::Integer)
     header.data_record_length = UInt16(length)
 end

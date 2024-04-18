@@ -38,7 +38,7 @@ export scan_direction, user_data
 # header interface
 export LasHeader, is_standard_gps, is_wkt, file_source_id, global_encoding, las_version, system_id, software_id, creation_day_of_year, creation_year
 export header_size, point_data_offset, point_record_length, record_format, point_format,  number_of_points, number_of_vlrs, number_of_evlrs, evlr_start, spatial_info, num_return_channels
-export set_spatial_info!, set_point_data_offset!, set_point_record_length!, set_point_record_count!, set_num_vlr!, set_num_evlr!, set_gps_week_time_bit!
+export set_spatial_info!, set_point_data_offset!, set_point_format!, set_point_record_length!, set_point_record_count!, set_num_vlr!, set_num_evlr!, set_gps_week_time_bit!
 export set_gps_standard_time_bit!, is_internal_waveform, is_external_waveform, unset_wkt_bit!
 export set_waveform_external_bit!, set_waveform_internal_bit!, set_synthetic_return_numbers_bit!, unset_synthetic_return_numbers_bit!
 export set_wkt_bit!, get_number_of_points_by_return, set_number_of_points_by_return!, waveform_record_start
@@ -54,7 +54,7 @@ export get_classes, get_description, set_description!
 export @register_vlr_type
 
 export LasDataset, get_header, get_pointcloud, get_vlrs, get_evlrs, get_user_defined_bytes
-export add_vlr!, remove_vlr!, add_column!
+export add_vlr!, remove_vlr!, set_superseded!, add_column!
 
 # I/O methods
 export load_las, load_pointcloud, save_las, load_header, load_vlrs
