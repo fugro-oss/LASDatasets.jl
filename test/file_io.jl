@@ -211,7 +211,6 @@ end
     tmpdir = mktempdir()
     output_file_path = joinpath(tmpdir, "test_las_write.las")
 
-    # TODO - this needs to point the PointCloudData interface once that is implemented
     @test save_las(output_file_path, data) == nothing
 
     pc = load_pointcloud(output_file_path, SVector{0,Symbol}())
@@ -286,7 +285,6 @@ end
     tmpdir = mktempdir()
     output_file_path = joinpath(tmpdir, "test_las_write.las")
 
-    # TODO - this needs to point the PointCloudData interface once that is implemented
     @test save_las(output_file_path, data) == nothing
 
     pc = load_pointcloud(output_file_path, [:position, :intensity, :classification, :withheld])
@@ -516,7 +514,31 @@ end
         save_las(file_name, las)
         new_las = load_las(file_name, (columnnames(pc)..., :thing, :other_thing, :undocumented_bytes))
         new_pc = get_pointcloud(new_las)
-        # for col ∈ columnnames(pc)
         @test new_las == las
+    end
+
+    # check now that we can pass extra fields through just as a Table
+    num_points = 10
+    pc = Table(
+        id = collect(1:num_points),
+        position = rand(SVector{3, Float64}, num_points),
+        classification = rand(1:10, num_points),
+        thing = rand(UInt32, num_points),
+        other_thing = rand(Int, num_points)
+    )
+    mktempdir() do tmp
+        file_name = joinpath(tmp, "pc.las")
+        save_las(file_name, pc)
+        new_las = load_las(file_name, columnnames(pc))
+        vlrs = get_vlrs(new_las)
+        @test length(vlrs) == 2
+        @test LAS.name(get_data(vlrs[1])) == "thing"
+        @test LAS.name(get_data(vlrs[2])) == "other_thing"
+        @test LAS.data_type(get_data(vlrs[1])) == UInt32
+        @test LAS.data_type(get_data(vlrs[2])) == Int
+        new_pc = get_pointcloud(new_las)
+        for col ∈ columnnames(pc)
+            @test all(isapprox.(getproperty(new_pc, col), getproperty(pc, col); atol = LAS.POINT_SCALE))
+        end
     end
 end
