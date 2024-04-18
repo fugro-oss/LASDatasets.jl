@@ -63,19 +63,30 @@ mutable struct LasDataset
         las_pc = Table(NamedTuple{ (las_cols...,) }( (map(col -> getproperty(pointcloud, col), las_cols)...,) ))
         user_pc = isempty(other_cols) ? missing : FlexTable(NamedTuple{ (other_cols...,) }( (map(col -> getproperty(pointcloud, col), other_cols)...,) ))
         for col ∈ other_cols
-            col_type = eltype(getproperty(pointcloud, col))
-            header.data_record_length += sizeof(col_type)
-            extra_bytes_vlrs = extract_vlr_type(vlrs, LAS_SPEC_USER_ID, ID_EXTRABYTES)
-            matching_extra_bytes_vlr = findfirst(Symbol.(name.(get_data.(extra_bytes_vlrs))) .== col)
-            if !isnothing(matching_extra_bytes_vlr)
-                deleteat!(vlrs, matching_extra_bytes_vlr)
+            # account for potentially having an undocumented entry - in this case, don't add an ExtraBytes VLR
+            if col != :undocumented_bytes
+                col_type = eltype(getproperty(pointcloud, col))
+                extra_bytes_vlrs = extract_vlr_type(vlrs, LAS_SPEC_USER_ID, ID_EXTRABYTES)
+                extra_bytes_data = get_data.(extra_bytes_vlrs)
+                matches_name = Symbol.(name.(extra_bytes_data)) .== col
+                matches_name_idx = findfirst(matches_name)
+                matches_type = data_type.(extra_bytes_data) .== col_type
+                matches_both_idx = findfirst(matches_name .& matches_type)
+                if !isnothing(matches_both_idx)
+                    # if there's an ExtraBytes VLR with the same name and data type, we can skip
+                    continue
+                elseif !isnothing(matches_name_idx)
+                    # if we find one with matching name (not type), we'll need to update the header record length to account for this new type
+                    header.data_record_length -= sizeof(data_type(get_data(vlrs[matches_name_idx])))
+                end
+                # need to add an Extra Bytes VLR for this column
+                extra_bytes = ExtraBytes(0x00, String(col), zero(col_type), zero(col_type), zero(col_type), zero(col_type), zero(col_type), "Custom Column $(col)")
+                extra_bytes_vlr = LasVariableLengthRecord(LAS_SPEC_USER_ID, ID_EXTRABYTES, String(col), extra_bytes)
+                push!(vlrs, extra_bytes_vlr)
+                header.n_vlr += 1
+                header.data_offset += sizeof(extra_bytes_vlr)
+                header.data_record_length += sizeof(col_type)
             end
-            # need to add an Extra Bytes VLR for this column
-            extra_bytes = ExtraBytes(0x00, String(col), zero(col_type), zero(col_type), zero(col_type), zero(col_type), zero(col_type), "Custom Column $(name)")
-            extra_bytes_vlr = LasVariableLengthRecord(LAS_SPEC_USER_ID, ID_EXTRABYTES, String(col), extra_bytes)
-            push!(vlrs, extra_bytes_vlr)
-            header.n_vlr += 1
-            header.data_offset += sizeof(extra_bytes_vlr)
         end
         return new(header, las_pc, user_pc, Vector{LasVariableLengthRecord}(vlrs), Vector{LasVariableLengthRecord}(evlrs), user_defined_bytes)
     end
@@ -107,36 +118,36 @@ function Base.show(io::IO, las::LasDataset)
     println(io, "\tUser Bytes: $(length(get_user_defined_bytes(las)))")
 end
 
-function Base.:(==)(contA::LasDataset, contB::LasDataset)
+function Base.:(==)(lasA::LasDataset, lasB::LasDataset)
     # need to individually check that the header, point cloud, (E)VLRs and user bytes are all the same
-    headers_equal = get_header(contA) == get_header(contB)
-    pcA = get_pointcloud(contA)
-    pcB = get_pointcloud(contB)
+    headers_equal = get_header(lasA) == get_header(lasB)
+    pcA = get_pointcloud(lasA)
+    pcB = get_pointcloud(lasB)
     colsA = columnnames(pcA)
-    colsB = columnnames(pcB)
+    colsB = columnnames(pcB)  
     pcs_equal = all([
         length(colsA) == length(colsB),
         length(pcA) == length(pcB),
-        all(colsA .== colsB),
+        all(sort(collect(colsA)) .== sort(collect(colsB))),
         all(map(col -> all(isapprox.(getproperty(pcA, col), getproperty(pcB, col); atol = 1e-6)), colsA))
     ])
-    vlrsA = get_vlrs(contA)
-    vlrsB = get_vlrs(contB)
+    vlrsA = get_vlrs(lasA)
+    vlrsB = get_vlrs(lasB)
     vlrs_equal = all([
         length(vlrsA) == length(vlrsB),
         # account for fact that VLRS might be same but in different order
         all(map(vlr -> any(vlrsB .== Ref(vlr)), vlrsA)),
         all(map(vlr -> any(vlrsA .== Ref(vlr)), vlrsB)),
     ])
-    evlrsA = get_evlrs(contA)
-    evlrsB = get_evlrs(contB)
+    evlrsA = get_evlrs(lasA)
+    evlrsB = get_evlrs(lasB)
     evlrs_equal = all([
         length(evlrsA) == length(evlrsB),
         # account for fact that VLRS might be same but in different order
         all(indexin(evlrsA, evlrsB) .!= nothing),
         all(indexin(evlrsB, evlrsA) .!= nothing)
     ])
-    user_bytes_equal = (get_user_defined_bytes(contA) == get_user_defined_bytes(contB))
+    user_bytes_equal = get_user_defined_bytes(lasA) == get_user_defined_bytes(lasB)
     return all([headers_equal, pcs_equal, vlrs_equal, evlrs_equal, user_bytes_equal])
 end
 

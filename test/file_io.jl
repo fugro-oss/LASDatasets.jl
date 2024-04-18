@@ -493,3 +493,30 @@ end
 
     rm(tmpdir, recursive = true)
 end
+
+@testset "Extra Bytes I/O" begin
+    # simple example where we have 4 extra undocumeented bytes per point
+    las = load_las(joinpath(@__DIR__, "test_files/undoc_extra_bytes.las"))
+    header = get_header(las)
+    @test point_record_length(header) == 34
+    @test point_format(header) == LasPoint6
+    # shouldn't have an extra bytes VLR here
+    @test isempty(get_vlrs(las))
+    pc = get_pointcloud(las)
+    @test length(pc) == 4
+    @test :undocumented_bytes ∈ columnnames(pc)
+    @test eltype(pc.undocumented_bytes) == SVector{4, UInt8}
+
+    # now let's add some proper user fields
+    add_column!(las, :thing, rand(4))
+    add_column!(las, :other_thing, rand(UInt32, 4))
+
+    mktempdir() do tmp
+        file_name = joinpath(tmp, "pc.las")
+        save_las(file_name, las)
+        new_las = load_las(file_name, (columnnames(pc)..., :thing, :other_thing, :undocumented_bytes))
+        new_pc = get_pointcloud(new_las)
+        # for col ∈ columnnames(pc)
+        @test new_las == las
+    end
+end

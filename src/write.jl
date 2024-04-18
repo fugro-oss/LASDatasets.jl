@@ -97,10 +97,12 @@ function write_las(io::IO, las::LasDataset)
     this_point_format = point_format(header)
     xyz = spatial_info(header)
 
-    user_fields = ismissing(las._user_data) ? () : columnnames(las._user_data)
+    user_fields = ismissing(las._user_data) ? () : filter(c -> c != :undocumented_bytes, columnnames(las._user_data))
+
+    undoc_bytes = :undocumented_bytes ∈ columnnames(pc) ? pc.undocumented_bytes : fill(SVector{0, UInt8}(), length(pc))
 
     # packing points into a StructVector makes operations where you have to access per-point fields many times like in get_record_bytes below faster
-    las_records = StructVector(las_record.(this_point_format, pc, Ref(xyz), Ref(user_fields)); unwrap = t -> (t <: LasPoint) || (t <: UserFields))
+    las_records = StructVector(las_record.(this_point_format, pc, Ref(xyz), undoc_bytes, Ref(user_fields)); unwrap = t -> (t <: LasPoint) || (t <: UserFields))
     byte_vector = get_record_bytes(las_records)
     write(io, byte_vector)
 
@@ -200,8 +202,8 @@ function get_record_bytes(records::StructVector{TRecord}) where {TRecord <: LasR
     end
 
     if undoc_bytes > 0
-        undoc_idxs = reduce(vcat, map(j -> (0:N - 1) .+ j, (byte_offset + 1):bytes_per_record:total_num_bytes))
-        view(whole_byte_vec, undoc_idxs) .= map(u -> Vector(u), Base.getproperty(records, :undocumented_bytes))
+        undoc_idxs = reduce(vcat, map(j -> (0:undoc_bytes - 1) .+ j, (byte_offset + 1):bytes_per_record:total_num_bytes))
+        view(whole_byte_vec, undoc_idxs) .= reduce(vcat, map(u -> Vector(u), Base.getproperty(records, :undoc_bytes)))
     end
     
     return whole_byte_vec

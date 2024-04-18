@@ -12,6 +12,14 @@ struct UserFields{Names, Types}
     """Mapping of field names to values. Note that values must match the corresponding field type included in the `UserFields` `Type` parameter"""
     values::Dict{Symbol, Any}
 
+    function UserFields{Names, Types}(values::Dict{Symbol, Any}) where {Names, Types}
+        ks = Tuple(collect(keys(values)))
+        types = Tuple{map(k -> typeof(values[k]), ks)...}
+        @assert ks == Names
+        @assert types == Types
+        return new{Names, Types}(values)
+    end
+
     function UserFields(values::Dict{Symbol, Any})
         ks = Tuple(collect(keys(values)))
         types = Tuple{map(k -> typeof(values[k]), ks)...}
@@ -134,10 +142,10 @@ $(TYPEDFIELDS)
 struct PointRecord{TPoint} <: LasRecord
     """The LAS point stored in this record"""
     point::TPoint
+end
 
-    function PointRecord(point::TPoint) where {TPoint <: LasPoint}
-        new{TPoint}(point)
-    end
+function PointRecord(point::TPoint) where {TPoint <: LasPoint}
+    PointRecord{TPoint}(point)
 end
 
 Base.read(io::IO, ::Type{PointRecord{TPoint}}) where {TPoint <: LasPoint} = PointRecord(read_struct(io, TPoint))
@@ -160,10 +168,10 @@ struct ExtendedPointRecord{TPoint, Names, Types} <: LasRecord
 
     """Extra user fields associated with this point"""
     user_fields::UserFields{Names, Types}
+end
 
-    function ExtendedPointRecord(point::TPoint, user_fields::UserFields{Names, Types}) where {TPoint <: LasPoint, Names, Types}
-        new{TPoint, Names, Types}(point, user_fields)
-    end
+function ExtendedPointRecord(point::TPoint, user_fields::UserFields{Names, Types}) where {TPoint <: LasPoint, Names, Types}
+    ExtendedPointRecord{TPoint, Names, Types}(point, user_fields)
 end
 
 function Base.read(io::IO, ::Type{ExtendedPointRecord{TPoint, Names, Types}}) where {TPoint <: LasPoint, Names, Types}
@@ -191,10 +199,10 @@ struct UndocPointRecord{TPoint, N} <: LasRecord
 
     """Array of extra bytes after the point that haven't been documented in the VLRs"""
     undoc_bytes::SVector{N, UInt8}
-    
-    function UndocPointRecord(point::TPoint, undoc_bytes::SVector{N, UInt8}) where {TPoint <: LasPoint, N}
-        new{TPoint, N}(point, undoc_bytes)
-    end
+end
+
+function UndocPointRecord(point::TPoint, undoc_bytes::SVector{N, UInt8}) where {TPoint <: LasPoint, N}
+    UndocPointRecord{TPoint, N}(point, undoc_bytes)
 end
 
 function Base.read(io::IO, ::Type{UndocPointRecord{TPoint, N}}) where {TPoint <: LasPoint, N}
@@ -224,23 +232,23 @@ struct FullRecord{TPoint, Names, Types, N} <: LasRecord
 
     """Array of extra bytes after the point that haven't been documented in the VLRs"""
     undoc_bytes::SVector{N, UInt8}
+end
 
-    function FullRecord(point::TPoint, user_fields::UserFields{Names, Types}, undoc_bytes::SVector{N, UInt8}) where {TPoint <: LasPoint, Names, Types, N}
-        new{TPoint, Names, Types, N}(point, user_fields, undoc_bytes)
-    end
+function FullRecord(point::TPoint, user_fields::UserFields{Names, Types}, undoc_bytes::SVector{N, UInt8}) where {TPoint <: LasPoint, Names, Types, N}
+    FullRecord{TPoint, Names, Types, N}(point, user_fields, undoc_bytes)
 end
 
 get_point_format(::Type{FullRecord{TPoint, Names, Types, N}}) where {TPoint, Names, Types, N} = TPoint
-get_num_user_field_bytes(::Type{TRecord}) where {TRecord <: FullRecord} = sum(get_user_field_types(TRecord))
+get_num_user_field_bytes(::Type{TRecord}) where {TRecord <: FullRecord} = sum(sizeof.(get_user_field_types(TRecord)))
 get_user_field_names(::Type{FullRecord{TPoint, Names, Types, N}}) where {TPoint, Names, Types, N} = collect(Names)
-get_user_field_types(::Type{FullRecord{TPoint, Names, Types, N}}) where {TPoint, Names, Types, N} = fieldnames(Types)
+get_user_field_types(::Type{FullRecord{TPoint, Names, Types, N}}) where {TPoint, Names, Types, N} = fieldtypes(Types)
 get_num_undocumented_bytes(::Type{FullRecord{TPoint, Names, Types, N}}) where {TPoint, Names, Types, N} = N
 get_undocumented_bytes(record::FullRecord) = record.undoc_bytes
 
 function Base.read(io::IO, ::Type{FullRecord{TPoint, Names, Types, N}}) where {TPoint <: LasPoint, Names, Types, N}
     point = read_struct(io, TPoint)
     user_fields = read(io, UserFields{Names, Types})
-    undoc_bytes = SVector{N}(read(N))
+    undoc_bytes = SVector{N}(read(io, N))
     return FullRecord(point, user_fields, undoc_bytes)
 end
 
@@ -255,13 +263,21 @@ Construct a LAS record for a point in a tabular point cloud
 * `xyz` : Spatial information about scaling, offsets and bounding ranges of the point cloud
 * `user_fields` : Tuple of user-defined fields to append to the point record (empty if not using). Note: these must match what's in your point `p`. Default `()`
 """
-function las_record(::Type{TPoint}, p::NamedTuple, xyz::SpatialInfo, user_fields = ()) where {TPoint <: LasPoint}
+function las_record(::Type{TPoint}, p::NamedTuple, xyz::SpatialInfo, undoc_bytes::SVector{N, UInt8}, user_fields = ()) where {TPoint <: LasPoint, N}
     point = laspoint(TPoint, p, xyz)
     if isempty(user_fields)
-        return PointRecord(point)
+        if N == 0
+            return PointRecord(point)
+        else
+            return UndocPointRecord(point, undoc_bytes)
+        end
     else
         user_fields = UserFields(map(field -> field => getproperty(p, field), user_fields)...)
-        return ExtendedPointRecord(point, user_fields)
+        if N == 0
+            return ExtendedPointRecord(point, user_fields)
+        else
+            return FullRecord(point, user_fields, undoc_bytes)
+        end
     end
 end
 
@@ -284,13 +300,13 @@ function record_format(header::LasHeader, extra_bytes::Vector{<:ExtraBytes} = Ex
         return UndocPointRecord{point_type, record_diff}
     end
     user_field_names = Tuple(Symbol.(name.(extra_bytes)))
-    user_field_types = Tuple{data_type.(extra_bytes)...}
+    user_field_types = data_type.(extra_bytes)
     num_user_bytes = sum(sizeof.(user_field_types))
     num_undoc_bytes = record_length - num_point_bytes - num_user_bytes
     @assert num_undoc_bytes ≥ 0 "Record length in header $(record_length)B inconsistent with size of point $(num_point_bytes)B and size of user fields $(num_user_bytes)B"
-    if num_user_bytes == 0
-        return FullRecord{point_type, user_field_names, user_field_types, num_undoc_bytes}
+    if num_undoc_bytes > 0
+        return FullRecord{point_type, user_field_names, Tuple{user_field_types...}, num_undoc_bytes}
     else
-        return ExtendedPointRecord{point_type, user_field_names, user_field_types}
+        return ExtendedPointRecord{point_type, user_field_names, Tuple{user_field_types...}}
     end
 end
