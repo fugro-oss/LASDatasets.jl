@@ -65,27 +65,42 @@ mutable struct LasDataset
         for col ∈ other_cols
             # account for potentially having an undocumented entry - in this case, don't add an ExtraBytes VLR
             if col != :undocumented_bytes
+                # need to handle the case where our user field is an array, in which case we'll need to add an ExtraBytes VLR for each array dimension
                 col_type = eltype(getproperty(pointcloud, col))
+                # make sure we have the appropriate types!
+                check_user_type(col_type)
+
+                # grab information about the existing ExtraBytes VLRs - need to see if we need to update them or not
                 extra_bytes_vlrs = extract_vlr_type(vlrs, LAS_SPEC_USER_ID, ID_EXTRABYTES)
                 extra_bytes_data = get_data.(extra_bytes_vlrs)
-                matches_name = Symbol.(name.(extra_bytes_data)) .== col
-                matches_name_idx = findfirst(matches_name)
-                matches_type = data_type.(extra_bytes_data) .== col_type
-                matches_both_idx = findfirst(matches_name .& matches_type)
-                if !isnothing(matches_both_idx)
-                    # if there's an ExtraBytes VLR with the same name and data type, we can skip
-                    continue
-                elseif !isnothing(matches_name_idx)
-                    # if we find one with matching name (not type), we'll need to update the header record length to account for this new type
-                    header.data_record_length -= sizeof(data_type(get_data(vlrs[matches_name_idx])))
+                user_field_names = Symbol.(name.(extra_bytes_data))
+                user_field_types = data_type.(extra_bytes_data)
+
+                is_vec = col_type <: SVector
+                # if the column is a scalar, just check for records with name "column", else check for names "column [0]", "column [1]", etc.
+                names_to_check = is_vec ? split_column_name(col, length(col_type)) : [col]
+                type_to_check = is_vec ? eltype(col_type) : col_type
+
+                for col_name ∈ names_to_check
+                    # find entries with the same name and possibly same type
+                    matches_name = user_field_names .== col_name
+                    matches_type = user_field_types .== type_to_check
+                    matches_both_idx = findfirst(matches_name .& matches_type)
+                    matches_name_idx = findfirst(matches_name)
+                    if !isnothing(matches_both_idx)
+                        # if there's an ExtraBytes VLR with the same name and data type, we can skip
+                        continue
+                    elseif !isnothing(matches_name_idx)
+                        # if we find one with matching name (not type), we'll need to update the header record length to account for this new type
+                        header.data_record_length -= sizeof(data_type(get_data(vlrs[matches_name_idx])))
+                    end
+                    # now make a new ExtraBytes VLR and add it to our dataset, updating the header information as we go
+                    extra_bytes_vlr = construct_extra_bytes_vlr(col_name, eltype(type_to_check))
+                    push!(vlrs, extra_bytes_vlr)
+                    header.n_vlr += 1
+                    header.data_offset += sizeof(extra_bytes_vlr)
+                    header.data_record_length += sizeof(type_to_check)
                 end
-                # need to add an Extra Bytes VLR for this column
-                extra_bytes = ExtraBytes(0x00, String(col), zero(col_type), zero(col_type), zero(col_type), zero(col_type), zero(col_type), "Custom Column $(col)")
-                extra_bytes_vlr = LasVariableLengthRecord(LAS_SPEC_USER_ID, ID_EXTRABYTES, String(col), extra_bytes)
-                push!(vlrs, extra_bytes_vlr)
-                header.n_vlr += 1
-                header.data_offset += sizeof(extra_bytes_vlr)
-                header.data_record_length += sizeof(col_type)
             end
         end
         return new(header, las_pc, user_pc, Vector{LasVariableLengthRecord}(vlrs), Vector{LasVariableLengthRecord}(evlrs), user_defined_bytes)
@@ -124,7 +139,7 @@ function Base.:(==)(lasA::LasDataset, lasB::LasDataset)
     pcA = get_pointcloud(lasA)
     pcB = get_pointcloud(lasB)
     colsA = columnnames(pcA)
-    colsB = columnnames(pcB)  
+    colsB = columnnames(pcB)
     pcs_equal = all([
         length(colsA) == length(colsB),
         length(pcA) == length(pcB),
@@ -222,6 +237,7 @@ Add a column with a `column` and set of `values` to a `las` dataset
 """
 function add_column!(las::LasDataset, column::Symbol, values::AbstractVector{T}) where T
     @assert length(values) == length(las.pointcloud) "Column size $(length(values)) inconsistent with number of points $(length(las.pointcloud))"
+    check_user_type(T)
     if ismissing(las._user_data)
         las._user_data = FlexTable(NamedTuple{ (column,) }( (values,) ))
     else
@@ -234,12 +250,37 @@ function add_column!(las::LasDataset, column::Symbol, values::AbstractVector{T})
     las.header.data_record_length += sizeof(T)
     vlrs = get_vlrs(las)
     extra_bytes_vlrs = extract_vlr_type(vlrs, LAS_SPEC_USER_ID, ID_EXTRABYTES)
-    matching_extra_bytes_vlr = findfirst(Symbol.(name.(get_data.(extra_bytes_vlrs))) .== column)
+    
+    if T <: SVector
+        # user field arrays have to be saved as sequential extra bytes records with names of the form "column [i]" (zero indexing encouraged)
+        split_col_name = split_column_name(column, length(T))
+        for i ∈ 1:length(T)
+            add_extra_bytes!(las, split_col_name[i], eltype(T), extra_bytes_vlrs)
+        end
+    else
+        add_extra_bytes!(las, column, T, extra_bytes_vlrs)
+    end
+    nothing
+end
+
+function check_user_type(::Type{T}) where T
+    correct_type = T ∈ SUPPORTED_EXTRA_BYTES_TYPES
+    correct_eltype = eltype(T) ∈ SUPPORTED_EXTRA_BYTES_TYPES
+    @assert correct_type || correct_eltype "Only columns of base types static vectors of base types supported as custom columns. Got type $(T)"
+end
+
+split_column_name(col::Symbol, dim::Integer) = map(i -> Symbol("$(col) [$(i - 1)]"), 1:dim)
+
+function add_extra_bytes!(las::LasDataset, col_name::Symbol, ::Type{T}, extra_bytes_vlrs::Vector{LasVariableLengthRecord}) where T
+    matching_extra_bytes_vlr = findfirst(Symbol.(name.(get_data.(extra_bytes_vlrs))) .== col_name)
     if !isnothing(matching_extra_bytes_vlr)
         remove_vlr!(las, extra_bytes_vlrs[matching_extra_bytes_vlr])
     end
-    extra_bytes = ExtraBytes(0x00, String(column), zero(T), zero(T), zero(T), zero(T), zero(T), "Custom Column $(column)")
-    extra_bytes_vlr = LasVariableLengthRecord(LAS_SPEC_USER_ID, ID_EXTRABYTES, String(column), extra_bytes)
+    extra_bytes_vlr = construct_extra_bytes_vlr(col_name, T)
     add_vlr!(las, extra_bytes_vlr)
-    nothing
+end
+
+function construct_extra_bytes_vlr(col_name::Symbol, ::Type{T}) where T
+    extra_bytes = ExtraBytes(0x00, String(col_name), zero(T), zero(T), zero(T), zero(T), zero(T), "Custom Column $(col_name)")
+    LasVariableLengthRecord(LAS_SPEC_USER_ID, ID_EXTRABYTES, String(col_name), extra_bytes)
 end

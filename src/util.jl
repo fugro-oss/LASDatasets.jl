@@ -139,3 +139,21 @@ function software_version()
     laspoints_version = read_project(joinpath( dirname(@__FILE__()), "..", "Project.toml")).version
     return "LAS.jl v$(laspoints_version)"
 end
+
+function get_base_field_name(field::Symbol)
+    str_name = String(field)
+    # first check if the field is part of an array
+    left_brack_idx = findfirst("[", str_name)
+    right_brack_idx = findfirst("]", str_name)
+    if isnothing(left_brack_idx) && isnothing(right_brack_idx)
+        return field
+    end
+    @assert all([
+        length(left_brack_idx) == 1,
+        length(right_brack_idx) == 1,
+        left_brack_idx[1] < right_brack_idx[1],
+        all(isdigit, str_name[(left_brack_idx[1] + 1):(right_brack_idx[1] - 1)])
+    ]) "Invalid column name $(field)"
+    # if it's split, get the bit before the brackets, i.e for "col [1]" you get "col"
+    return Symbol(strip(str_name[1:left_brack_idx[1] - 1]))
+end

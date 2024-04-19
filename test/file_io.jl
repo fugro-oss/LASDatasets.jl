@@ -156,39 +156,6 @@ end
 
     @test length(columnnames(pc)) == length(desired_attributes) + 1 # for :id
     @test all([c in columnnames(pc) for c in desired_attributes])
-
-    # test with a 3D bounding box
-    # bb = FugroGeometry.BoundingBox(387676.885, 7826736.304,-131.82,387677.014,7826736.380,-131.81)
-
-    # pc = load_las(
-    #     joinpath(@__DIR__, "test_files/test_io.las"),
-    #     desired_attributes,
-    #     bb,
-    # )
-
-    # @test length(columnnames(pc)) == length(desired_attributes) + 1 # for :id
-    # @test all([c in columnnames(pc) for c in desired_attributes])
-    # @test length(pc) == 11
-    # @test all(length.(collect(columns(pc))) .== 11)
-    # @test pc.id == [7, 8, 10, 11, 12, 13, 14, 15, 16, 17, 18]
-
-    # # test with a 2D bounding box
-    # bb = bounding_ranges(
-    #     SVector{2,Float64}(387676.885, 387677.014),
-    #     SVector{2,Float64}(7826736.304, 7826736.380),
-    # )
-    # pc = load_las(
-    #     joinpath(@__DIR__, "test_files/test_io.las"),
-    #     desired_attributes,
-    #     bb,
-    # )
-
-    # @test length(columnnames(pc)) == length(desired_attributes) + 1 # for :id
-    # @test all([c in columnnames(pc) for c in desired_attributes])
-    # @test length(pc) == 16
-    # @test all(length.(collect(columns(pc))) .== 16)
-    # @test pc.id == [1, 2, 4, 5, 6, 7, 8, 10, 11, 12, 13, 14, 15, 16, 17, 18]
-
 end
 
 @testset "Test Save PointCloud As LAS" begin
@@ -213,8 +180,6 @@ end
 
     @test save_las(output_file_path, data) == nothing
 
-    pc = load_pointcloud(output_file_path, SVector{0,Symbol}())
-
     expected_columns = [ # since we use gps time and no color, we write data as LasPoint3
         :id,
         :position,
@@ -233,6 +198,8 @@ end
         :gps_time,
         :color,
     ]
+
+    pc = load_pointcloud(output_file_path, expected_columns)
 
     @test length(expected_columns) == length(columnnames(pc))
     @test all([c in columnnames(pc) for c in expected_columns])
@@ -507,7 +474,7 @@ end
 
     # now let's add some proper user fields
     add_column!(las, :thing, rand(4))
-    add_column!(las, :other_thing, rand(UInt32, 4))
+    add_column!(las, :other_thing, rand(SVector{3, UInt32}, 4))
 
     mktempdir() do tmp
         file_name = joinpath(tmp, "pc.las")
@@ -523,7 +490,7 @@ end
         id = collect(1:num_points),
         position = rand(SVector{3, Float64}, num_points),
         classification = rand(1:10, num_points),
-        thing = rand(UInt32, num_points),
+        thing = rand(SVector{5, Float64}, num_points),
         other_thing = rand(Int, num_points)
     )
     mktempdir() do tmp
@@ -531,11 +498,12 @@ end
         save_las(file_name, pc)
         new_las = load_las(file_name, columnnames(pc))
         vlrs = get_vlrs(new_las)
-        @test length(vlrs) == 2
-        @test LAS.name(get_data(vlrs[1])) == "thing"
-        @test LAS.name(get_data(vlrs[2])) == "other_thing"
-        @test LAS.data_type(get_data(vlrs[1])) == UInt32
-        @test LAS.data_type(get_data(vlrs[2])) == Int
+        # 5 Extra Bytes VLRs for "thing" and 2 VLRs for "other_thing"
+        @test length(vlrs) == 6
+        @test all(map(i -> LAS.name(get_data(vlrs[i])) == "thing [$(i - 1)]", 1:5))
+        @test LAS.name(get_data(vlrs[6])) == "other_thing"
+        @test all(LAS.data_type.(get_data.(vlrs[1:5])) .== Float64)
+        @test LAS.data_type(get_data(vlrs[6])) == Int
         new_pc = get_pointcloud(new_las)
         for col ∈ columnnames(pc)
             @test all(isapprox.(getproperty(new_pc, col), getproperty(pc, col); atol = LAS.POINT_SCALE))

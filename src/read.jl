@@ -131,10 +131,10 @@ end
 
 function make_table(records::Vector{ExtendedPointRecord{TPoint, Names, Types}}, required_columns::TTuple, xyz::SpatialInfo) where {TPoint <: LasPoint, Names, Types, TTuple}
     las_columns, extractors = get_cols_and_extractors(TPoint, required_columns, xyz)
-    user_fields = filter(field -> field ∈ required_columns, Names)
+    user_fields, grouped_user_fields = get_user_fields_for_table(records, Names, required_columns)
     Table(NamedTuple{ (las_columns..., user_fields...,) }( (
         map(e -> get_column.(Ref(e), records), extractors)..., 
-        map(field -> getproperty.(getproperty.(records, :user_fields), field), user_fields)...
+        grouped_user_fields...
     ) ))
 end
 
@@ -145,10 +145,10 @@ end
 
 function make_table(records::Vector{FullRecord{TPoint, Names, Types, N}}, required_columns::TTuple, xyz::SpatialInfo) where {TPoint <: LasPoint, Names, Types, N, TTuple}
     las_columns, extractors = get_cols_and_extractors(TPoint, required_columns, xyz)
-    user_fields = filter(field -> field ∈ required_columns, Names)
+    user_fields, grouped_user_fields = get_user_fields_for_table(records, Names, required_columns)
     Table(NamedTuple{ (las_columns..., user_fields..., :undocumented_bytes) }( (
             map(e -> get_column.(Ref(e), records), extractors)..., 
-            map(field -> getproperty.(getproperty.(records, :user_fields), field), user_fields)..., 
+            grouped_user_fields...,
             get_undocumented_bytes.(records)
         ) ))
 end
@@ -161,6 +161,45 @@ function get_cols_and_extractors(::Type{TPoint}, required_columns::TTuple, xyz::
     end
     extractors = map(c -> Extractor{c}(xyz), las_columns)
     return las_columns, extractors
+end
+
+function get_user_fields_for_table(records::Vector{TRecord}, Names::Tuple, required_columns::TTuple) where {TRecord <: Union{ExtendedPointRecord, FullRecord}, TTuple}
+    user_fields = filter(field -> get_base_field_name(field) ∈ required_columns, Names)
+    raw_user_data = Dict{Symbol, Vector}(field => getproperty.(getproperty.(records, :user_fields), field) for field ∈ user_fields)
+    user_field_map = get_user_field_map(user_fields)
+    grouped_field_names = collect(keys(user_field_map))
+    user_fields = filter(field -> field ∈ required_columns, grouped_field_names)
+    grouped_user_fields = group_user_fields(raw_user_data, user_field_map)
+    return user_fields, grouped_user_fields
+end
+
+function get_user_field_map(user_fields::Union{Tuple, Vector})
+    field_map = Dict{Symbol, Vector{Symbol}}()
+    for field ∈ user_fields
+        base_name = get_base_field_name(field)
+        if base_name ∉ keys(field_map)
+            field_map[base_name] = Symbol[]
+        end
+        push!(field_map[base_name], field)
+    end
+    # need to make sure we put the array entries back in the right order: "col [0]", "col [1]", etc.
+    return Dict{Symbol, Vector{Symbol}}(base_name => sort(field_map[base_name]) for base_name ∈ keys(field_map))
+end
+
+function group_user_fields(raw_user_data::Dict{Symbol, Vector}, user_field_map::Dict{Symbol, Vector{Symbol}})
+    out = []
+    for base_field ∈ keys(user_field_map)
+        if length(user_field_map[base_field]) == 1
+            push!(out, raw_user_data[base_field])
+        else
+            all_data = map(field -> raw_user_data[field], user_field_map[base_field])
+            N = length(all_data)
+            T = eltype(all_data[1])
+            vals = map(i -> SVector{N, T}(getindex.(all_data, Ref(i))), eachindex(all_data[1]))
+            push!(out, vals)
+        end
+    end
+    return Tuple(out)
 end
 
 function convert_units!(as_table::AbstractVector{<:NamedTuple}, vlrs::Vector{LasVariableLengthRecord}, convert_x_y_z_units::Union{Missing, Bool}, convert_z_units::Union{Missing, Bool})
