@@ -233,7 +233,7 @@ end
 """
     $(TYPEDSIGNATURES)
 
-Add a column with a `column` and set of `values` to a `las` dataset
+Add a column with name `column` and set of `values` to a `las` dataset
 """
 function add_column!(las::LasDataset, column::Symbol, values::AbstractVector{T}) where T
     @assert length(values) == length(las.pointcloud) "Column size $(length(values)) inconsistent with number of points $(length(las.pointcloud))"
