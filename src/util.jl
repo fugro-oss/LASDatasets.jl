@@ -61,7 +61,7 @@ function open_las(func::Function, file::String, rw::String = "r")
     end
 end
 
-function open_laz(func, file::String, rw::String="r")
+function open_laz(func::Function, file::String, rw::String = "r")
 
     las_file = tempname() * ".las"
     mkpath(dirname(las_file))
@@ -154,6 +154,6 @@ function get_base_field_name(field::Symbol)
         left_brack_idx[1] < right_brack_idx[1],
         all(isdigit, str_name[(left_brack_idx[1] + 1):(right_brack_idx[1] - 1)])
     ]) "Invalid column name $(field)"
-    # if it's split, get the bit before the brackets, i.e for "col [1]" you get "col"
+    # if it's split, get the substring before the brackets (stripping spaces), i.e for "col [1]" you get "col"
     return Symbol(strip(str_name[1:left_brack_idx[1] - 1]))
 end
