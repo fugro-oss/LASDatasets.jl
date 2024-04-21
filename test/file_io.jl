@@ -460,7 +460,7 @@ end
 end
 
 @testset "Extra Bytes I/O" begin
-    # simple example where we have 4 extra undocumeented bytes per point
+    # simple example where we have 4 extra undocumented bytes per point
     las = load_las(joinpath(@__DIR__, "test_files/undoc_extra_bytes.las"))
     header = get_header(las)
     @test point_record_length(header) == 34

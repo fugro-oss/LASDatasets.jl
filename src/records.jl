@@ -286,14 +286,14 @@ get_column(extractor::Extractor, record::LasRecord) = get_column(extractor, get_
 """
     $(TYPEDSIGNATURES)
 
-Get the appropriate LAS record format for a LAS `header` and a (possibly empty) est of `extra_bytes` that document any optional user fields to include
+Get the appropriate LAS record format for a LAS `header` and a (possibly empty) set of `extra_bytes` that document any optional user fields to include
 """
 function record_format(header::LasHeader, extra_bytes::Vector{<:ExtraBytes} = ExtraBytes[])
     point_type = point_format(header)
     record_length = point_record_length(header)
     num_point_bytes = byte_size(point_type)
     record_diff = record_length - num_point_bytes
-    @assert record_diff ≥ 0 "Record length in header $(record_length)B smaller than point size $(num_point_bytes)B"
+    @assert record_diff ≥ 0 "Record length in header $(record_length)B is smaller than point size $(num_point_bytes)B"
     if record_diff == 0
         return PointRecord{point_type}
     elseif isempty(extra_bytes)
@@ -303,7 +303,7 @@ function record_format(header::LasHeader, extra_bytes::Vector{<:ExtraBytes} = Ex
     user_field_types = data_type.(extra_bytes)
     num_user_bytes = sum(sizeof.(user_field_types))
     num_undoc_bytes = record_length - num_point_bytes - num_user_bytes
-    @assert num_undoc_bytes ≥ 0 "Record length in header $(record_length)B inconsistent with size of point $(num_point_bytes)B and size of user fields $(num_user_bytes)B"
+    @assert num_undoc_bytes ≥ 0 "Record length of $(record_length)B in header is inconsistent with size of point $(num_point_bytes)B and size of user fields $(num_user_bytes)B"
     if num_undoc_bytes > 0
         return FullRecord{point_type, user_field_names, Tuple{user_field_types...}, num_undoc_bytes}
     else

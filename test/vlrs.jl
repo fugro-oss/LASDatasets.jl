@@ -122,7 +122,7 @@
         @register_vlr_type Vector{Int} "User ID" [1, 2]
         @test ("User ID", [1, 2]) ∈ keys(LAS._VLR_TYPE_MAP) && (LAS._VLR_TYPE_MAP["User ID", [1, 2]] == Vector{Int})
         
-        @register_vlr_type(String, "Custom", collect(10:15))
+        @register_vlr_type String "Custom" collect(10:15)
         LAS.read_vlr_data(io::IO, ::Type{String}, nb::Integer) = LAS.readstring(io, nb)
         
         # create a custom VLR

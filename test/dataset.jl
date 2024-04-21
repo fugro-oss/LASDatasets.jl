@@ -46,8 +46,8 @@
     @test other_las == las
     
     # now try incorporating some user fields
-    spicey_pc = Table(pc, thing = rand(num_points), other_thing = rand(Int16, num_points))
-    las = LasDataset(header, spicey_pc, LasVariableLengthRecord[], LasVariableLengthRecord[], UInt8[])
+    spicy_pc = Table(pc, thing = rand(num_points), other_thing = rand(Int16, num_points))
+    las = LasDataset(header, spicy_pc, LasVariableLengthRecord[], LasVariableLengthRecord[], UInt8[])
     # make sure our record length reflects the user fields
     this_header = get_header(las)
     @test point_record_length(this_header) == LAS.byte_size(LasPoint1) + 10
@@ -56,8 +56,8 @@
     @test length(las._user_data) == num_points
     @test sort(collect(columnnames(las._user_data))) == [:other_thing, :thing]
     this_pc = get_pointcloud(las)
-    @test this_pc.thing == spicey_pc.thing
-    @test this_pc.other_thing == spicey_pc.other_thing
+    @test this_pc.thing == spicy_pc.thing
+    @test this_pc.other_thing == spicy_pc.other_thing
     # we should have documented our columns as extra bytes VLRs now
     vlrs = get_vlrs(las)
     @test length(vlrs) == 2
