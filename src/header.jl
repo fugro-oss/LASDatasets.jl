@@ -282,6 +282,11 @@ function Base.read(io::IO, ::Type{LasHeader})
     )
 end
 
+"""
+    $(TYPEDSIGNATURES)
+
+Helper function that reads the last few fields (from legacy record count to point return count) of a LAS header from an `io`
+"""
 function read_final_fields(io::IO, las_version::VersionNumber, is_at_least_v14::Bool)
     legacy_record_count = read(io, UInt32)
     legacy_point_return_count = Tuple(read!(io, Vector{UInt32}(undef, 5)))
@@ -354,32 +359,132 @@ function Base.write(io::IO, h::LasHeader)
     nothing
 end
 
+"""
+    $(TYPEDSIGNATURES)
+
+Get the LAS specification version from a header `h`
+"""
 las_version(h::LasHeader) = h.las_version
+
+"""
+    $(TYPEDSIGNATURES)
+
+Get the file source ID specification version from a header `h`
+"""
 file_source_id(h::LasHeader) = h.file_source_id
-global_encoding(h::LasHeader) = h.global_encoding 
+
+"""
+    $(TYPEDSIGNATURES)
+
+Get the global properties bit vector from a header `h`
+"""
+global_encoding(h::LasHeader) = h.global_encoding
+
+"""
+    $(TYPEDSIGNATURES)
+
+Get the system ID from a header `h`
+"""
 system_id(h::LasHeader) = replace(String(collect(h.system_id)), "\0" => "")
+
+"""
+    $(TYPEDSIGNATURES)
+
+Get the software ID from a header `h`
+"""
 software_id(h::LasHeader) = replace(String(collect(h.software_id)), "\0" => "")
+
+"""
+    $(TYPEDSIGNATURES)
+
+Get the creation day of the year from a header `h`
+"""
 creation_day_of_year(h::LasHeader) = h.creation_dayofyear
+
+"""
+    $(TYPEDSIGNATURES)
+
+Get the creation year from a header `h`
+"""
 creation_year(h::LasHeader) = h.creation_year
+
+"""
+    $(TYPEDSIGNATURES)
+
+Get the size of a header `h` in bytes
+"""
 header_size(h::LasHeader) = h.header_size
+
+"""
+    $(TYPEDSIGNATURES)
+
+Get the offset to the first point record in a LAS file specified by a header `h`
+"""
 point_data_offset(h::LasHeader) = Int(h.data_offset)
+
+"""
+    $(TYPEDSIGNATURES)
+
+Get the number of bytes assigned to each point record in a LAS file specified by a header `h`
+"""
 point_record_length(h::LasHeader) = Int(h.data_record_length)
 
+"""
+    $(TYPEDSIGNATURES)
+
+Get the LAS point format from a header `header`
+"""
 function point_format(header::LasHeader)
     return get_point_format(LasPoint{Int(header.data_format_id)})
 end
 
+"""
+    $(TYPEDSIGNATURES)
+
+Get the number of points in a LAS file from a header `h`
+"""
 number_of_points(h::LasHeader) = h.las_version ≥ v"1.4" ? Int(h.record_count) : Int(h.legacy_record_count)
 
+"""
+    $(TYPEDSIGNATURES)
+
+Get the number of Variable Length Records in a LAS file from a header `h`
+"""
 number_of_vlrs(h::LasHeader) = Int(h.n_vlr)
+
+"""
+    $(TYPEDSIGNATURES)
+
+Get the number of Extended Variable Length Records in a LAS file from a header `h`
+"""
 number_of_evlrs(h::LasHeader) = Int(h.n_evlr)
 
+"""
+    $(TYPEDSIGNATURES)
+
+Get the offset in bytes to the first EVLR in a LAS file from a header `header`
+"""
 evlr_start(header::LasHeader) = header.evlr_start
 
+"""
+    $(TYPEDSIGNATURES)
+
+Get the spatial information for point positions in a LAS file from a header `h`. This includes the offsets/scale factors applied to points and bounding box information
+"""
 spatial_info(h::LasHeader) = h.spatial_info
 
+"""
+    $(TYPEDSIGNATURES)
+
+Get the number of return channels in a LAS file from a header `h`
+"""
 num_return_channels(h::LasHeader) = las_version(h) ≥ v"1.4" ? 15 : 5
 
+"""
+    $(TYPEDSIGNATURES)
+
+Get the LAS version in a header `h`
+"""
 function set_las_version!(h::LasHeader, v::VersionNumber)
     if any([
         (v ≤ v"1.1") && (get_point_format_id(point_format(h)) ≥ 2),
@@ -400,10 +505,20 @@ function set_las_version!(h::LasHeader, v::VersionNumber)
     end
 end
 
+"""
+    $(TYPEDSIGNATURES)
+
+Set the spatial information associate to points in a LAS file with a header `header`
+"""
 function set_spatial_info!(header::LasHeader, info::SpatialInfo)
     header.spatial_info = info
 end
 
+"""
+    $(TYPEDSIGNATURES)
+
+Set offset to the first point record in a LAS file with a header `header`
+"""
 function set_point_data_offset!(header::LasHeader, offset::Integer)
     header.data_offset = UInt32(offset)
 end
@@ -412,10 +527,20 @@ function set_point_format!(header::LasHeader, id::Integer)
     header.data_format_id = UInt8(id)
 end
 
+"""
+    $(TYPEDSIGNATURES)
+
+Set the number of bytes associated to each point record in a LAS file with a header `header`
+"""
 function set_point_record_length!(header::LasHeader, length::Integer)
     header.data_record_length = UInt16(length)
 end
 
+"""
+    $(TYPEDSIGNATURES)
+
+Set the number of points in a LAS file with a header `header`
+"""
 function set_point_record_count!(header::LasHeader, num_points::Integer)
     if las_version(header) == v"1.4"
         @assert num_points ≤ typemax(UInt64) "Can't have more than $(typemax(UInt64)) points for LAS v1.4"
@@ -426,10 +551,20 @@ function set_point_record_count!(header::LasHeader, num_points::Integer)
     end
 end
 
+"""
+    $(TYPEDSIGNATURES)
+
+Set the number of Variable Length Records in a LAS file with a header `header`
+"""
 function set_num_vlr!(header::LasHeader, n::Integer)
     header.n_vlr = UInt64(n)
 end
 
+"""
+    $(TYPEDSIGNATURES)
+
+Set the number of Extended Variable Length Records in a LAS file with a header `header`
+"""
 function set_num_evlr!(header::LasHeader, n::Integer)
     @assert las_version(header) == v"1.4" "Can't have extended variable length records in LAS version $(las_version(header))"
     header.n_evlr = UInt64(n)
@@ -450,30 +585,60 @@ function is_wkt(h::LasHeader)
     wkit_bit
 end
 
+"""
+    $(TYPEDSIGNATURES)
+
+Sets the bit flag indicating that the header `header` is in GPS week time
+"""
 function set_gps_week_time_bit!(header::LasHeader)
     # setting bit 0 to 0
     header.global_encoding &= 0xfffe
 end
 
+"""
+    $(TYPEDSIGNATURES)
+
+Sets the bit flag indicating that the header `header` is in GPS standard time
+"""
 function set_gps_standard_time_bit!(header::LasHeader)
     # setting bit 0 to 1
     header.global_encoding |= 0x0001
 end
 
+"""
+    $(TYPEDSIGNATURES)
+
+Returns whether a LAS file with header `header` has waveform data stored in the LAS file
+"""
 function is_internal_waveform(header::LasHeader)
     return Bool((header.global_encoding & 0x0002) >> 1)
 end
 
+"""
+    $(TYPEDSIGNATURES)
+
+Returns whether a LAS file with header `header` has waveform data in an external file
+"""
 function is_external_waveform(header::LasHeader)
     return Bool((header.global_encoding & 0x0004) >> 2)
 end
 
+"""
+    $(TYPEDSIGNATURES)
+
+Sets the bit flag indicating that the header `header` has internal waveform records
+"""
 function set_waveform_internal_bit!(header::LasHeader)
     # setting bit 1 to 1 and bit 2 to 0
     header.global_encoding |= 0x0002
     header.global_encoding &= 0xfffb
 end
 
+"""
+    $(TYPEDSIGNATURES)
+
+Sets the bit flag indicating that the header `header` has external waveform records
+"""
 function set_waveform_external_bit!(header::LasHeader)
     # setting bit 2 to 1 and bit 1 to 0
     header.global_encoding |= 0x0004
@@ -485,30 +650,60 @@ function unset_waveform_bits!(header::LasHeader)
     header.global_encoding &= 0xfff9
 end
 
+"""
+    $(TYPEDSIGNATURES)
+
+Sets the bit flag indicating that the header `header` has synthetically-generated return numbers
+"""
 function set_synthetic_return_numbers_bit!(header::LasHeader)
     # setting bit 3 to 1
     header.global_encoding |= 0x0008
 end
 
+"""
+    $(TYPEDSIGNATURES)
+
+Sets the bit flag indicating that the header `header` does not have synthetically-generated return numbers
+"""
 function unset_synthetic_return_numbers_bit!(header::LasHeader)
     # setting bit 3 to 0
     header.global_encoding &= 0xfff7
 end
 
+"""
+    $(TYPEDSIGNATURES)
+
+Sets the bit flag indicating that the LAS file with header `header` has its coordinate reference system set as a WKT 
+"""
 function set_wkt_bit!(header::LasHeader)
     # need to set bit 4 to 1
     header.global_encoding |= 0x0010
 end
 
+"""
+    $(TYPEDSIGNATURES)
+
+Sets the bit flag indicating that the LAS file with header `header` doesn't have its coordinate reference system set as a WKT 
+"""
 function unset_wkt_bit!(header::LasHeader)
     # need to set bit 4 to 0
     header.global_encoding &= 0xffef
 end
 
+"""
+    $(TYPEDSIGNATURES)
+
+Get the number of points per return for a header `header`
+"""
 function get_number_of_points_by_return(header::LasHeader)
     return las_version(header) ≥ v"1.4" ? header.point_return_count : header.legacy_point_return_count
 end
 
+"""
+    $(TYPEDSIGNATURES)
+
+Set the number of points per return for a header `header` to the values `points_per_return`
+"""
 function set_number_of_points_by_return!(header::LasHeader, points_per_return::NTuple{N, Integer}) where N
     return_limit = las_version(header) ≥ v"1.4" ? typemax(UInt64) : typemax(UInt32)
     @assert all(points_per_return .≤ return_limit) "Maximum allowed points per return count is $return_limit"
@@ -520,6 +715,11 @@ function set_number_of_points_by_return!(header::LasHeader, points_per_return::N
     end
 end
 
+"""
+    $(TYPEDSIGNATURES)
+
+Get the offset in bytes to the first waveform record for a LAS file with header `header`
+"""
 waveform_record_start(header::LasHeader) = header.waveform_record_start
 
 "X coordinate (Float64), apply scale and offset according to the header"
