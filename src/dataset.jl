@@ -305,7 +305,7 @@ Merge a column with name `column` and a set of `values` into a `las` dataset
 function merge_column!(las::LasDataset, column::Symbol, values::AbstractVector)
     @assert length(values) == length(las.pointcloud) "Column size $(length(values)) inconsistent with number of points $(length(las.pointcloud))"
     if column ∈ columnnames(las.pointcloud)
-        las.pointcloud.column .= value
+        getproperty(las.pointcloud, column) .= values
     else
         add_column!(las, column, values)
     end
