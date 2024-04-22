@@ -6,7 +6,15 @@ makedocs(
     modules = [LAS],
     sitename = "LAS.jl Documentation",
     repo = "https://github.com/fugro-oss/LAS.jl",
-    pages = ["Home" => "index.md"],
+    pages = [
+        "Home" => "index.md",
+        "Interface" => "interface.md",
+        "Header" => "header.md",
+        "Variable Length Records" => "vlrs.md",
+        "User Fields" => "user_fields.md",
+        "Internals" => "internals.md",
+        "API" => "api.md"
+    ],
 )
 
 deploydocs(
