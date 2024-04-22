@@ -75,3 +75,19 @@ save_las("my_las.las", pc)
 ```
 
 Note that when you supply just the point cloud outside of a `LasDataset`, *LAS.jl* will automatically construct the appropriate header for you so you don't need to worry about the specifics of appropriate point formats etc. 
+
+## Modifying LAS Contents
+You can modify point fields in your `LasDataset` by adding new columns or merging in values from an existing vector.
+
+```@docs; canonical = false
+add_column!
+merge_column!
+```
+
+You can also add or remove *(E)VLRs* using the following functions, and set an existing *(E)VLR* as *superseded* if it's an old copy of a record.
+
+```@docs; canonical = false
+add_vlr!
+delete!_vlr!
+set_superseded!
+```
