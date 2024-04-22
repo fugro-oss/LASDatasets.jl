@@ -91,11 +91,11 @@ Read LAS data from an IO source
 * `required_columns` : Point record fields to extract as columns in the output data, default `DEFAULT_LAS_COLUMNS`
 
 ### Keyword Arguments
-* `convert_x_y_z_units` : Name of the units used to measure point coordinates in the LAS file that will be converted to metres when ingested. Set to `missing` for no conversion (default `missing`)
+* `convert_x_y_units` : Name of the units used to measure point coordinates in the LAS file that will be converted to metres when ingested. Set to `missing` for no conversion (default `missing`)
 * `convert_z_units` : Name of the units on the z-axis in the LAS file that will be converted to metres when ingested. Set to `missing` for no conversion (default `missing`)
 """
 function read_las_data(io::TIO, required_columns::TTuple=DEFAULT_LAS_COLUMNS;
-                        convert_x_y_z_units::Union{String, Missing} = missing, 
+                        convert_x_y_units::Union{String, Missing} = missing, 
                         convert_z_units::Union{String, Missing} = missing) where {TIO <: Union{Base.AbstractPipe,IO}, TTuple}
 
     header = read(io, LasHeader)
@@ -117,13 +117,25 @@ function read_las_data(io::TIO, required_columns::TTuple=DEFAULT_LAS_COLUMNS;
 
     as_table = make_table(records, required_columns, xyz)
 
-    convert_units!(as_table, vlrs, convert_x_y_z_units, convert_z_units)
+    convert_units!(as_table, vlrs, convert_x_y_units, convert_z_units)
 
     evlrs = Vector{LasVariableLengthRecord}(map(_ -> read(io, LasVariableLengthRecord, true), 1:number_of_evlrs(header)))
 
     LasDataset(header, as_table, vlrs, evlrs, user_defined_bytes)
 end
 
+"""
+    $(TYPEDSIGNATURES)
+
+Convert a collection of LAS point records into a `Table` with the desired columns
+
+# Arguments
+* `records` : A collection of `LasRecord`s that have been read from a LAS file
+* `required_columns` : Set of columns to include in the table being constructed
+* `xyz` : Spatial information used to apply scaling/offset factors to point positions
+
+$(METHODLIST)
+"""
 function make_table(records::Vector{PointRecord{TPoint}}, required_columns::TTuple, xyz::SpatialInfo) where {TPoint <: LasPoint, TTuple}
     las_columns, extractors = get_cols_and_extractors(TPoint, required_columns, xyz)
     Table(NamedTuple{ (las_columns...,) }( (map(e -> get_column.(Ref(e), records), extractors)...,) ))
@@ -153,6 +165,16 @@ function make_table(records::Vector{FullRecord{TPoint, Names, Types, N}}, requir
         ) ))
 end
 
+"""
+    $(TYPEDSIGNATURES)
+
+Helper function that gets the compatible column names from a user-requested set of columns and a particular point format
+
+# Arguments
+* `TPoint` : Type of `LasPoint` format to check column compatibility for
+* `required_columns` : Set of columns requested by the user (if empty, use all columns included in the format `TPoint`)
+* `xyz` : Spatial information used to apply scaling/offset factors to point positions
+"""
 function get_cols_and_extractors(::Type{TPoint}, required_columns::TTuple, xyz::SpatialInfo) where {TPoint <: LasPoint, TTuple}
     las_columns = if isnothing(required_columns) || isempty(required_columns)
         has_columns(TPoint)
@@ -163,6 +185,12 @@ function get_cols_and_extractors(::Type{TPoint}, required_columns::TTuple, xyz::
     return las_columns, extractors
 end
 
+"""
+    $(TYPEDSIGNATURES)
+
+Helper function that finds the names of user-defined point fields that have been requested by a user and group them together if they form arrays in the output data. 
+Note according to spec that user-defined array field names must be of the form `col [0], col[1], ..., col[N]` where `N` is the dimension of the user field
+"""
 function get_user_fields_for_table(records::Vector{TRecord}, Names::Tuple, required_columns::TTuple) where {TRecord <: Union{ExtendedPointRecord, FullRecord}, TTuple}
     user_fields = filter(field -> get_base_field_name(field) ∈ required_columns, Names)
     raw_user_data = Dict{Symbol, Vector}(field => getproperty.(getproperty.(records, :user_fields), field) for field ∈ user_fields)
@@ -173,6 +201,12 @@ function get_user_fields_for_table(records::Vector{TRecord}, Names::Tuple, requi
     return user_fields, grouped_user_fields
 end
 
+"""
+    $(TYPEDSIGNATURES)
+
+Helper function that maps a user field name to the set of user field names in the Extra Bytes VLRs that are entries for this field.
+If a user field is a scalar, this will simply map `user_field => [user_field]`. If it is a vector, it will map `col => ["col [0]", "col [1]", ..., "col [N]"]`
+"""
 function get_user_field_map(user_fields::Union{Tuple, Vector})
     field_map = Dict{Symbol, Vector{Symbol}}()
     for field ∈ user_fields
@@ -186,6 +220,15 @@ function get_user_field_map(user_fields::Union{Tuple, Vector})
     return Dict{Symbol, Vector{Symbol}}(base_name => sort(field_map[base_name]) for base_name ∈ keys(field_map))
 end
 
+"""
+    $(TYPEDSIGNATURES)
+
+Helper function that groups raw user field data into either a vector of scalars or vector of vectors
+
+# Arguments
+* `raw_user_data` : Maps the raw user field names (as they appear in the Extra Bytes VLRs, e.g. "col" for scalar or "col [n]" for entry in array) to their data in each point record
+* `user_field_map` : Maps each user field base name to the collection of raw user field names composing it
+"""
 function group_user_fields(raw_user_data::Dict{Symbol, Vector}, user_field_map::Dict{Symbol, Vector{Symbol}})
     out = []
     for base_field ∈ keys(user_field_map)
@@ -202,17 +245,23 @@ function group_user_fields(raw_user_data::Dict{Symbol, Vector}, user_field_map::
     return Tuple(out)
 end
 
-function convert_units!(as_table::AbstractVector{<:NamedTuple}, vlrs::Vector{LasVariableLengthRecord}, convert_x_y_z_units::Union{Missing, Bool}, convert_z_units::Union{Missing, Bool})
-    if :position ∈ columnnames(as_table)
-        if !ismissing(convert_x_y_z_units) && !ismissing(convert_z_units)
+"""
+    $(TYPEDSIGNATURES)
+
+Convert the position units of some `pointcloud` data into metres based upon the coordinate units in the LAS file's `vlrs`.
+Can override the unit conversion by manually specifying a unit to convert on the *XY*-plane, `convert_x_y_units`, and/or a unit to convert on the z-axis `convert_z_units` (missing if not overriding)
+"""
+function convert_units!(pointcloud::AbstractVector{<:NamedTuple}, vlrs::Vector{LasVariableLengthRecord}, convert_x_y_units::Union{Missing, String}, convert_z_units::Union{Missing, String})
+    if :position ∈ columnnames(pointcloud)
+        if !ismissing(convert_x_y_units) && !ismissing(convert_z_units)
             these_are_wkts = is_ogc_wkt_record.(vlrs)
             @assert count(these_are_wkts) == 1 "Expected to find 1 OGC WKT VLR, instead found $(count(these_are_wkts))"
 
             ogc_wkt = vlrs[findfirst(these_are_wkts)]
-            conversion = conversion_from_vlrs(ogc_wkt, convert_x_y_z_units = convert_x_y_z_units, convert_z_units = convert_z_units)
+            conversion = conversion_from_vlrs(ogc_wkt, convert_x_y_units = convert_x_y_units, convert_z_units = convert_z_units)
             if !ismissing(conversion) && any(conversion .!= 1.0)
                 @info "Positions converted to meters using conversion $(conversion)"
-                as_table = as_table.position .= map(p -> p .* conversion, as_table.position)
+                pointcloud = pointcloud.position .= map(p -> p .* conversion, pointcloud.position)
             end
         end
     end

@@ -107,11 +107,12 @@ mutable struct LasDataset
     end
 end
 
-get_header(las::LasDataset) = las.header
-get_vlrs(las::LasDataset) = las.vlrs
-get_evlrs(las::LasDataset) = las.evlrs
-get_user_defined_bytes(las::LasDataset) = las.user_defined_bytes
 
+"""
+    $(TYPEDSIGNATURES)
+
+Extract point cloud data as a Table from a `LasDataset` `las`
+"""
 function get_pointcloud(las::LasDataset)
     if ismissing(las._user_data)
         return las.pointcloud
@@ -119,6 +120,34 @@ function get_pointcloud(las::LasDataset)
         return Table(las.pointcloud, las._user_data)
     end
 end
+
+"""
+    $(TYPEDSIGNATURES)
+
+Extract the header information from a `LasDataset` `las`
+"""
+get_header(las::LasDataset) = las.header
+
+"""
+    $(TYPEDSIGNATURES)
+
+Extract the set of Variable Length Records from a `LasDataset` `las`
+"""
+get_vlrs(las::LasDataset) = las.vlrs
+
+"""
+    $(TYPEDSIGNATURES)
+
+Extract the set of Extended Variable Length Records from a `LasDataset` `las`
+"""
+get_evlrs(las::LasDataset) = las.evlrs
+
+"""
+    $(TYPEDSIGNATURES)
+
+Extract the set of user-defined bytes from a `LasDataset` `las`
+"""
+get_user_defined_bytes(las::LasDataset) = las.user_defined_bytes
 
 function Base.show(io::IO, las::LasDataset)
     println(io, "LAS Dataset")
@@ -223,6 +252,11 @@ function remove_vlr!(las::LasDataset, vlr::LasVariableLengthRecord)
     end
 end
 
+"""
+    $(TYPEDSIGNATURES)
+
+Mark a VLR `vlr` as superseded in a dataset `las`
+"""
 function set_superseded!(las::LasDataset, vlr::LasVariableLengthRecord)
     vlrs = is_extended(vlr) ? get_evlrs(las) : get_vlrs(las)
     matching_idx = findfirst(vlrs .== Ref(vlr))
@@ -263,14 +297,35 @@ function add_column!(las::LasDataset, column::Symbol, values::AbstractVector{T})
     nothing
 end
 
+"""
+    $(TYPEDSIGNATURES)
+
+Verify that a user field data type `T` is supported as an extra byte type
+"""
 function check_user_type(::Type{T}) where T
     correct_type = T ∈ SUPPORTED_EXTRA_BYTES_TYPES
     correct_eltype = eltype(T) ∈ SUPPORTED_EXTRA_BYTES_TYPES
     @assert correct_type || correct_eltype "Only columns of base types static vectors of base types supported as custom columns. Got type $(T)"
 end
 
+"""
+    $(TYPEDSIGNATURES)
+
+Helper function that returns a list of extra bytes VLR field names for each entry in a user-defined array with column name `col` and dimension `dim`
+"""
 split_column_name(col::Symbol, dim::Integer) = map(i -> Symbol("$(col) [$(i - 1)]"), 1:dim)
 
+"""
+    $(TYPEDSIGNATURES)
+
+Add an extra bytes VLR to a LAS dataset to document an extra user-field for points
+
+# Arguments
+* `las` : LAS dataset to add extra bytes to
+* `col_name` : Name to save the user field as
+* `T` : Data type for the user field (must be a base type as specified in the spec or a static vector of one of these types)
+* `extra_bytes_vlr` : Set of existing extra bytes VLRs already present in the LAS dataset
+"""
 function add_extra_bytes!(las::LasDataset, col_name::Symbol, ::Type{T}, extra_bytes_vlrs::Vector{LasVariableLengthRecord}) where T
     matching_extra_bytes_vlr = findfirst(Symbol.(name.(get_data.(extra_bytes_vlrs))) .== col_name)
     if !isnothing(matching_extra_bytes_vlr)
@@ -280,6 +335,11 @@ function add_extra_bytes!(las::LasDataset, col_name::Symbol, ::Type{T}, extra_by
     add_vlr!(las, extra_bytes_vlr)
 end
 
+"""
+    $(TYPEDSIGNATURES)
+
+Construct an extra bytes VLR with a field name `col_name` and data type `T`
+"""
 function construct_extra_bytes_vlr(col_name::Symbol, ::Type{T}) where T
     extra_bytes = ExtraBytes(0x00, String(col_name), zero(T), zero(T), zero(T), zero(T), zero(T), "Custom Column $(col_name)")
     LasVariableLengthRecord(LAS_SPEC_USER_ID, ID_EXTRABYTES, String(col_name), extra_bytes)

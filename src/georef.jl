@@ -245,19 +245,19 @@ Given an OGC WKT coordinate system `wkt`, attempt to parse conversion units (to 
 Can opt to convert all axes units or just the vertical.
 """
 function conversion_from_vlrs(wkt::OGC_WKT; 
-                                convert_x_y_z_units::Union{String, Missing} = missing, 
+                                convert_x_y_units::Union{String, Missing} = missing, 
                                 convert_z_units::Union{String, Missing} = missing)::Union{Missing, SVector{3}}
     
     unit = get_horizontal_unit(wkt)
     v_unit = get_vertical_unit(wkt)
 
     # Overwrite with operator specified units
-    if !ismissing(convert_x_y_z_units)
+    if !ismissing(convert_x_y_units)
         if ismissing(unit) 
-            unit = convert_x_y_z_units
-        elseif convert_x_y_z_units != unit
-            @warn "You say x/y/z units are $(convert_x_y_z_units), but las header says $(unit) -- hope you're right!"
-            unit = convert_x_y_z_units
+            unit = convert_x_y_units
+        elseif convert_x_y_units != unit
+            @warn "You say x/y/z units are $(convert_x_y_units), but las header says $(unit) -- hope you're right!"
+            unit = convert_x_y_units
         end
     end
 
