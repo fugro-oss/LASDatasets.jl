@@ -141,14 +141,13 @@ end
         :classification,      
         :point_source_id,
         :position,
-        :gps_time,
         :returnnumber,
         :numberofreturns,
     ]
 
     @test all([c in columnnames(pc) for c in expected_columns])
-    @test length(pc) == 19
-    @test all(pc.id .== 1:19)
+    @test length(pc) == 225
+    @test all(pc.id .== 1:225)
 
     # try to read only certain fields
     desired_attributes = Vector{Symbol}([:position, :intensity])
