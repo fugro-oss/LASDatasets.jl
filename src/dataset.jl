@@ -300,6 +300,20 @@ end
 """
     $(TYPEDSIGNATURES)
 
+Merge a column with name `column` and a set of `values` into a `las` dataset
+"""
+function merge_column!(las::LasDataset, column::Symbol, values::AbstractVector)
+    @assert length(values) == length(las.pointcloud) "Column size $(length(values)) inconsistent with number of points $(length(las.pointcloud))"
+    if column ∈ columnnames(las.pointcloud)
+        las.pointcloud.column .= value
+    else
+        add_column!(las, column, values)
+    end
+end
+
+"""
+    $(TYPEDSIGNATURES)
+
 Verify that a user field data type `T` is supported as an extra byte type
 """
 function check_user_type(::Type{T}) where T

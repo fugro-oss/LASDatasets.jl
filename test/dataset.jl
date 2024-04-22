@@ -84,6 +84,11 @@
     new_extra_bytes = get_data(vlrs[3])
     @test (LAS.name(new_extra_bytes) == "thing") && (LAS.data_type(new_extra_bytes) == UInt8)
 
+    # merge some data into our dataset
+    new_classifications = rand(5:8, num_points)
+    merge_column!(las, :classification, new_classifications)
+    @test get_pointcloud(las).classification == new_classifications
+
     # now check we can modify VLRs correctly
     desc = LasVariableLengthRecord(
         LAS.LAS_SPEC_USER_ID, 
