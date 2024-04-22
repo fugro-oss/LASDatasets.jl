@@ -1,5 +1,5 @@
 @testset "Basic I/O Tests" begin
-    file_name = joinpath(@__DIR__, "test_files/example.las")
+    file_name = joinpath(@__DIR__, "test_files/example_1_4_p6.las")
 
     las = load_las(file_name)
     
@@ -132,7 +132,7 @@ end
 @testset "Test Extract PointCloud" begin
 
     # try to read all fields
-    pc = load_pointcloud(joinpath(@__DIR__, "test_files/test_io.las"))
+    pc = load_pointcloud(joinpath(@__DIR__, "test_files/example_1_4_p0.las"))
     @test length(columnnames(pc)) !== 0
     
     expected_columns = [
@@ -152,7 +152,7 @@ end
 
     # try to read only certain fields
     desired_attributes = Vector{Symbol}([:position, :intensity])
-    pc = load_pointcloud(joinpath(@__DIR__, "test_files/test_io.las"), desired_attributes)
+    pc = load_pointcloud(joinpath(@__DIR__, "test_files/example_1_4_p0.las"), desired_attributes)
 
     @test length(columnnames(pc)) == length(desired_attributes) + 1 # for :id
     @test all([c in columnnames(pc) for c in desired_attributes])
