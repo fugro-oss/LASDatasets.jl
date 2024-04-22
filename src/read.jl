@@ -91,10 +91,12 @@ Read LAS data from an IO source
 * `required_columns` : Point record fields to extract as columns in the output data, default `DEFAULT_LAS_COLUMNS`
 
 ### Keyword Arguments
+* `convrt_to_metres` : Flag indicating that point coordinates will be converted to metres upon reading, default true
 * `convert_x_y_units` : Name of the units used to measure point coordinates in the LAS file that will be converted to metres when ingested. Set to `missing` for no conversion (default `missing`)
 * `convert_z_units` : Name of the units on the z-axis in the LAS file that will be converted to metres when ingested. Set to `missing` for no conversion (default `missing`)
 """
 function read_las_data(io::TIO, required_columns::TTuple=DEFAULT_LAS_COLUMNS;
+                        convert_to_metres::Bool = true,
                         convert_x_y_units::Union{String, Missing} = missing, 
                         convert_z_units::Union{String, Missing} = missing) where {TIO <: Union{Base.AbstractPipe,IO}, TTuple}
 
@@ -117,7 +119,9 @@ function read_las_data(io::TIO, required_columns::TTuple=DEFAULT_LAS_COLUMNS;
 
     as_table = make_table(records, required_columns, xyz)
 
-    convert_units!(as_table, vlrs, convert_x_y_units, convert_z_units)
+    if convert_to_metres
+        convert_units!(as_table, vlrs, convert_x_y_units, convert_z_units)
+    end
 
     evlrs = Vector{LasVariableLengthRecord}(map(_ -> read(io, LasVariableLengthRecord, true), 1:number_of_evlrs(header)))
 
