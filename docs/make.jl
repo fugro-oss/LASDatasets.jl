@@ -10,6 +10,7 @@ makedocs(
         "Home" => "index.md",
         "Interface" => "interface.md",
         "Header" => "header.md",
+        "Points" => "points.md",
         "Variable Length Records" => "vlrs.md",
         "User Fields" => "user_fields.md",
         "Internals" => "internals.md",

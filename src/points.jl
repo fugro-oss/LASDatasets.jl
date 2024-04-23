@@ -1,3 +1,4 @@
+"""An abstract type of LasPoint. Implemented by concrete types for formats that are supported in the spec"""
 abstract type LasPoint{Format} end
 
 "ASPRS LAS point data record format 0"
@@ -219,6 +220,13 @@ const LasPointNIR = Union{LasPoint8, LasPoint10}
 const LasPointWavePacket = Union{LasPoint4, LasPoint5, LasPoint9, LasPoint10}
 const ALL_LAS_POINTS = [LasPoint0, LasPoint1, LasPoint2, LasPoint3, LasPoint4, LasPoint5, LasPoint6, LasPoint7, LasPoint8, LasPoint9, LasPoint10]
 
+"""
+    $(TYPEDSIGNATURES)
+
+Get the concrete point format struct from an abstract `LasPoint` type
+
+$(METHODLIST)
+"""
 get_point_format(::Type{LasPoint{0}}) = LasPoint0
 get_point_format(::Type{LasPoint{1}}) = LasPoint1
 get_point_format(::Type{LasPoint{2}}) = LasPoint2
@@ -231,8 +239,15 @@ get_point_format(::Type{LasPoint{8}}) = LasPoint8
 get_point_format(::Type{LasPoint{9}}) = LasPoint9
 get_point_format(::Type{LasPoint{10}}) = LasPoint10
 
+"""
+    $(TYPEDSIGNATURES)
+
+Get the numeric format ID corresponding to a particular point format
+
+$(METHODLIST)
+"""
 get_point_format_id(::Type{T}) where {N, T <: LasPoint{N}} = N
-get_point_format_id(point_format::T) where {N, T <: LasPoint{N}} = N
+get_point_format_id(::T) where {N, T <: LasPoint{N}} = N
 
 function get_point_format(::Type{LasPoint{T}}) where T
     # LAZ point formats, are offset by 128
@@ -241,6 +256,11 @@ function get_point_format(::Type{LasPoint{T}}) where T
     end
 end
 
+"""
+    $(TYPEDSIGNATURES)
+
+Get the LAS spec version that matches the point type `T`
+"""
 function lasversion_for_point end
 
 lasversion_for_point(::Type{T}) where T <: LasPoint{0} = v"1.1"
@@ -255,10 +275,6 @@ lasversion_for_point(::Type{T}) where T <: LasPoint{8}  = v"1.4"
 lasversion_for_point(::Type{T}) where T <: LasPoint{9}  = v"1.4"
 lasversion_for_point(::Type{T}) where T <: LasPoint{10}  = v"1.4"
 
-function point_format(type::Type{TPoints}) where TPoints <: LasPoint{N} where N
-    return N
-end
-
 # speeding up reading:
 @reflect LasPoint0
 @reflect LasPoint1
@@ -272,19 +288,5 @@ end
 @reflect LasPoint9
 @reflect LasPoint10
 
-concrete_type(::Type{LasPoint{0}}) = LasPoint0
-concrete_type(::Type{LasPoint{1}}) = LasPoint1
-concrete_type(::Type{LasPoint{2}}) = LasPoint2
-concrete_type(::Type{LasPoint{3}}) = LasPoint3
-concrete_type(::Type{LasPoint{4}}) = LasPoint4
-concrete_type(::Type{LasPoint{5}}) = LasPoint5
-concrete_type(::Type{LasPoint{6}}) = LasPoint6
-concrete_type(::Type{LasPoint{7}}) = LasPoint7
-concrete_type(::Type{LasPoint{8}}) = LasPoint8
-concrete_type(::Type{LasPoint{9}}) = LasPoint9
-concrete_type(::Type{LasPoint{10}}) = LasPoint10
-
 Base.read(io::IO, ::Type{TPoint}) where {TPoint <: LasPoint} = read_struct(io, TPoint)
 Base.write(io::IO, p::TPoint) where {TPoint <: LasPoint} = write_struct(io, p)
-
-point(::Type{TPoint}) where {N, TPoint <: LasPoint{N}} = TPoint

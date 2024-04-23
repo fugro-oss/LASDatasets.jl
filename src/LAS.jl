@@ -14,7 +14,7 @@ using StaticArrays
 using StructArrays
 using TypedTables
 
-include("defaults.jl")
+include("constants.jl")
 include("util.jl")
 include("spatial_info.jl")
 include("vlrs.jl")
