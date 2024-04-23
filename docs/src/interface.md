@@ -26,14 +26,14 @@ get_user_defined_bytes
 ```
 
 ## Reading
-To read the entire contents of a *LAS* or *LAZ* file, you can use the `load_las` function. This return a `LasDataset` with all the quantities listed above. You also have the option of only loading certain point fields.
+To read the entire contents of a *LAS* or *LAZ* file, you can use the `load_las` function. This returns a `LasDataset` with all the properties listed above. You also have the option of only loading certain point fields.
 
 ```julia
 # read the full dataset
 las = load_las("example.las")
 
 # only extract position and classification
-las = load_las("example", [:position, :classification])
+las = load_las("example.las", [:position, :classification])
 ```
 
 Note that when reading data, the position units for your points are automatically converted to metres provided they are specified correctly in an *OGC Coordinate System WKT* string. If not, you can still manually specify what units you would like to convert from (note that they must match the unit naming convention given by *OGC WKTs*), e.g.
@@ -54,7 +54,7 @@ load_vlrs
 ```
 
 ## Writing
-You can write the contents of your `LasDataset` to a file by using the `save_las` function. Note that this takes either a `LasDataset` as a whole, or a tabular point cloud, *(E)VLRs* and user-defined bytes separately.
+You can write the contents of your `LasDataset` to a file by using the `save_las` function. Note that this takes either a `LasDataset` on its own or a tabular point cloud with *(E)VLRs* and user-defined bytes supplied separately.
 
 ```@docs; canonical = false
 save_las

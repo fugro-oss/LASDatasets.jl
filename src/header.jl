@@ -508,7 +508,7 @@ end
 """
     $(TYPEDSIGNATURES)
 
-Set the spatial information associate to points in a LAS file with a header `header`
+Set the spatial information associated to points in a LAS file with a header `header`
 """
 function set_spatial_info!(header::LasHeader, info::SpatialInfo)
     header.spatial_info = info

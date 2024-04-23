@@ -21,7 +21,7 @@ coordinate transformation service implementation specification [here](https://ww
 OGC_WKT
 ```
 
-One benefit of using the *OGC WKT* is that you can specify what units of measurement are used for your point coordinates along both the *XY* plane and the *Z* axis. When reading a *LAS* file, the system can detect if an *OGC WKT* is present and will, if requested by the user, convert the point coordinates to metres.
+One benefit of using the *OGC WKT* is that you can specify what units of measurement are used for your point coordinates both in the *XY* plane and along the *Z* axis. When reading a *LAS* file, the system can detect if an *OGC WKT* is present and will, if requested by the user, convert the point coordinates to metres.
 
 ### GeoTiff
 
@@ -73,7 +73,7 @@ You can add a description for your dataset using a `TextAreaDescription` data ty
 TextAreaDescription
 ```
 
-Using the dataset `las` above, we can add a description as follows (and save/read it as we did above). Note you can also rrepeat the way the Classification Lookup was saved above too.
+Using the dataset `las` above, we can add a description as follows (and save/read it as we did above). Note you can also repeat the way the Classification Lookup was saved above too.
 
 ```julia
 description = TextAreaDescription("This is an example LAS file and has no specific meaning")
@@ -82,7 +82,7 @@ add_vlr!(las, LasVariableLengthRecord("LASF_Spec", 3, "Text Area Description", d
 
 ### Extra Bytes
 
-Extra Bytes *VLRs* are a type of *VLR* that documents any user fields that have been added to point records in your *LAS* data. You can find an in-depth explaination of how to save/load user defined fields to your points [here](./user_fields.md). 
+Extra Bytes *VLRs* are a type of *VLR* that documents any user fields that have been added to point records in your *LAS* data. You can find an in-depth explanation of how to save/load user defined fields to your points [here](./user_fields.md). 
 
 The Extra Bytes *VLRs* are represented by the `ExtraBytes` struct, and have a few methods to get some information from them. Note that currrently *LAS.jl* only supports automatically detecting and writing the user field name, data type and description to the *VLR* based on input point data. Support for other fields such as the min/max range, scale/offset factors, etc. may become available in future releases. You can, however, still manually specify these if you choose.
 

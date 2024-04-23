@@ -34,4 +34,4 @@ save_las("my_pc.las", pc)
 las = load_las("my_pc.las", [:position, :classification, :thing])
 ```
 
-It's also worth mentioning too that you can save "undocumented bytes" to any point as well by labelling them with the column `:undocumented_bytes`. In practice, it is possible to either have point records with user fields and undocumented bytes, just one or the other, or neither (just the *LAS* point itself).
+It's also worth mentioning that you can save "undocumented bytes" to any point as well by labelling them with the column `:undocumented_bytes`. In practice, it is possible to have point records with user fields and undocumented bytes, just one or the other, or neither (just the *LAS* point itself). For more details see [here](./internals.md#point-records).
