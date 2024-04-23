@@ -1,4 +1,15 @@
+"""
+    $(TYPEDEF)
+
+A lookup record for classification labels. Each class has a short description telling you what it is.
+
+$(TYPEDFIELDS)
+---
+
+$(METHODLIST)
+"""
 struct ClassificationLookup
+    """Mapping of each class to a description"""
     class_description_map::Dict{UInt8, String}
     function ClassificationLookup(class_description_map::Dict{TInt, String}) where {TInt <: Integer}
         @assert all(keys(class_description_map) .≤ typemax(UInt8)) "Classes must be between 0 and 255"
@@ -57,6 +68,7 @@ struct TextAreaDescription
 end
 
 @register_vlr_type TextAreaDescription LAS_SPEC_USER_ID ID_TEXTDESCRIPTION
+Base.write(io::IO, desc::TextAreaDescription) = write(io, desc.txt)
 read_vlr_data(io::IO, ::Type{TextAreaDescription}, nb::Integer) = TextAreaDescription(readstring(io, nb))
 Base.sizeof(desc::TextAreaDescription) = Base.sizeof(desc.txt)
 
@@ -116,8 +128,18 @@ function data_type_from_code(code::Integer)
     code == 0 ? Missing : SUPPORTED_EXTRA_BYTES_TYPES[code]
 end
 
+"""
+    $(TYPEDSIGNATURES)
+
+Get the name of an additional user field that's documented by an extra bytes record `e`
+"""
 name(e::ExtraBytes) = e.name
-data_type(e::ExtraBytes{TData}) where TData = TData
+"""
+    $(TYPEDSIGNATURES)
+
+Get the data type of an `ExtraBytes` record
+"""
+data_type(::ExtraBytes{TData}) where TData = TData
 no_data_flag(e::ExtraBytes) = Bool(e.options & 0x01)
 min_flag(e::ExtraBytes) = Bool(e.options & 0x02)
 max_flag(e::ExtraBytes) = Bool(e.options & 0x04)

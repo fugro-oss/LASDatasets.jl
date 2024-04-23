@@ -88,6 +88,6 @@ You can also add or remove *(E)VLRs* using the following functions, and set an e
 
 ```@docs; canonical = false
 add_vlr!
-delete!_vlr!
+remove_vlr!
 set_superseded!
 ```

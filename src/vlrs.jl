@@ -234,7 +234,12 @@ is_srs(vlr::LasVariableLengthRecord) = vlr.record_id in (
     ID_GEODOUBLEPARAMSTAG,
     ID_GEOASCIIPARAMSTAG)
 
-function extract_vlr_type(vlrs::Vector{<:LasVariableLengthRecord}, user_id::String, id::Integer)
-    matches_ids = findall(vlr -> (get_user_id(vlr) == user_id) && (get_record_id(vlr) == id), vlrs)
+"""
+    $(TYPEDSIGNATURES)
+
+Extract all VLRs with a `user_id` and `record_id` from a collection of VLRs, `vlrs`
+"""
+function extract_vlr_type(vlrs::Vector{<:LasVariableLengthRecord}, user_id::String, record_id::Integer)
+    matches_ids = findall(vlr -> (get_user_id(vlr) == user_id) && (get_record_id(vlr) == record_id), vlrs)
     return vlrs[matches_ids]
 end

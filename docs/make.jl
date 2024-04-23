@@ -13,8 +13,9 @@ makedocs(
         "Variable Length Records" => "vlrs.md",
         "User Fields" => "user_fields.md",
         "Internals" => "internals.md",
-        "API" => "api.md"
+        "API" => "api.md",
     ],
+    warnonly = [:missing_docs, :autodocs_block, :docs_block, :cross_references]
 )
 
 deploydocs(

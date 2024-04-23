@@ -645,6 +645,11 @@ function set_waveform_external_bit!(header::LasHeader)
     header.global_encoding &= 0xfffd
 end
 
+"""
+    $(TYPEDSIGNATURES)
+
+Unset all bit flags in a `header` to do with waveform information
+"""
 function unset_waveform_bits!(header::LasHeader)
     # setting bits 2 and 1 to 0
     header.global_encoding &= 0xfff9
