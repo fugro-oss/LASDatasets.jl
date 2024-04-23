@@ -50,8 +50,9 @@ jobs:
       - uses: julia-actions/julia-runtest@v1
   docs:
     permissions:
-      contents: write
-      statuses: write
+      contents: write  # Required when authenticating with `GITHUB_TOKEN`, not needed when authenticating with SSH deploy keys
+      pull-requests: read  # Required when using `push_preview=true`
+      statuses: write  # Optional, used to report documentation build statuses
     name: Documentation
     runs-on: ubuntu-latest
     steps:
