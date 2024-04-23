@@ -563,6 +563,7 @@ function make_consistent_header(pointcloud::AbstractVector{<:NamedTuple},
     header = LasHeader(; 
         las_version = version, 
         data_format_id = UInt8(get_point_format_id(point_format)),
+        data_record_length = UInt16(byte_size(point_format)),
         spatial_info = spatial_info,
     )
 
@@ -574,7 +575,7 @@ end
 """
     $(TYPEDSIGNATURES)
 
-Ensure that a LAS `header` is consistent with a given `pointcloud` data in a specific LAS `point_format`, coupled with sets of `vlrs`, `evlrs` and `user_defined_bytes`
+Ensure that a LAS `header` is consistent with a given `pointcloud` data coupled with sets of `vlrs`, `evlrs` and `user_defined_bytes`
 """
 function make_consistent_header!(header::LasHeader, 
                                 pointcloud::AbstractVector{<:NamedTuple},
