@@ -283,6 +283,8 @@ end
 
 get_column(extractor::Extractor, record::LasRecord) = get_column(extractor, get_point(record))
 
+byte_size(::Type{TRecord}) where {TRecord <: LasRecord} = byte_size(get_point_format(TRecord)) + get_num_user_field_bytes(TRecord) + get_num_undocumented_bytes(TRecord)
+
 """
     $(TYPEDSIGNATURES)
 

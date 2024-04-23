@@ -113,10 +113,12 @@ function read_las_data(io::TIO, required_columns::TTuple=DEFAULT_LAS_COLUMNS;
     extra_bytes = Vector{ExtraBytes}(map(vlr -> get_data(vlr), extract_vlr_type(vlrs, LAS_SPEC_USER_ID, ID_EXTRABYTES)))
 
     this_format = record_format(header, extra_bytes)
-    
     xyz = spatial_info(header)
-    records = map(_ -> read(io, this_format), 1:number_of_points(header))
-
+    
+    # using an iterator is approx 2x faster than simply doing map(_ -> read(io, T), 1:N)
+    iter = ReadPointsIterator{TIO, this_format}(io, number_of_points(header))
+    records = map(r -> r, iter)
+    
     as_table = make_table(records, required_columns, xyz)
 
     if convert_to_metres
@@ -270,3 +272,42 @@ function convert_units!(pointcloud::AbstractVector{<:NamedTuple}, vlrs::Vector{L
         end
     end
 end
+
+"""
+    $(TYPEDEF)
+
+An iterator for reading point records
+    
+$(TYPEDFIELDS)
+"""
+struct ReadPointsIterator{TIO, TRecord}
+    """IO channel to read point records from"""
+    io::TIO
+
+    """Number of points to read in total"""
+    num_points::Integer
+end
+
+function Base.iterate(iter::ReadPointsIterator{TIO, TRecord}) where {TIO,TRecord}
+    if iter.num_points == 0
+        return nothing
+    else
+        return (read(iter.io, TRecord), 1)
+    end
+end
+
+function Base.iterate(iter::ReadPointsIterator{TIO, TRecord}, n::Integer) where {TIO,TRecord}
+    if n ≥ iter.num_points
+        return nothing
+    else
+        return (read(iter.io, TRecord), n + 1)
+    end
+end
+
+
+Base.eltype(::Type{ReadPointsIterator{TIO, TRecord}}) where {TIO,TRecord} = TRecord
+Base.length(iter::ReadPointsIterator{TIO, TRecord}) where {TIO,TRecord} = iter.num_points
+
+Base.IteratorSize(::Type{ReadPointsIterator{TIO, TRecord}}) where {TIO,TRecord} = Base.HasLength()
+Base.IteratorEltype(::Type{ReadPointsIterator{TIO, TRecord}}) where {TIO,TRecord} = Base.HasEltype()
+Base.isdone(iter::ReadPointsIterator{TIO, TRecord}) where {TIO, TRecord} = position(iter.io) ≥ (iter.num_points * byte_size(TRecord))
