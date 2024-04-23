@@ -480,6 +480,11 @@ function set_waveform_external_bit!(header::LasHeader)
     header.global_encoding &= 0xfffd
 end
 
+function unset_waveform_bits!(header::LasHeader)
+    # setting bits 2 and 1 to 0
+    header.global_encoding &= 0xfff9
+end
+
 function set_synthetic_return_numbers_bit!(header::LasHeader)
     # setting bit 3 to 1
     header.global_encoding |= 0x0008
@@ -539,3 +544,74 @@ zcoord(z::Real, h::LasHeader) = zcoord(z, spatial_info(h))
 xcoord(x::Real, xyz::SpatialInfo) = get_int(Int32, x, xyz.offset.x, xyz.scale.x)
 ycoord(y::Real, xyz::SpatialInfo) = get_int(Int32, y, xyz.offset.y, xyz.scale.y)
 zcoord(z::Real, xyz::SpatialInfo) = get_int(Int32, z, xyz.offset.z, xyz.scale.z)
+
+"""
+    $(TYPEDSIGNATURES)
+
+Construct a LAS header that is consistent with a given `pointcloud` data in a specific LAS `point_format`, coupled with sets of `vlrs`, `evlrs` and `user_defined_bytes` 
+"""
+function make_consistent_header(pointcloud::AbstractVector{<:NamedTuple}, 
+                                point_format::Type{TPoint},
+                                vlrs::Vector{<:LasVariableLengthRecord}, 
+                                evlrs::Vector{<:LasVariableLengthRecord},
+                                user_defined_bytes::Vector{UInt8},
+                                scale::Real) where {TPoint <: LasPoint}
+    version = lasversion_for_point(point_format)
+
+    spatial_info = get_spatial_info(pointcloud; scale = scale)
+
+    header = LasHeader(; 
+        las_version = version, 
+        data_format_id = UInt8(get_point_format_id(point_format)),
+        spatial_info = spatial_info,
+    )
+
+    make_consistent_header!(header, pointcloud, vlrs, evlrs, user_defined_bytes)
+    
+    return header
+end
+
+"""
+    $(TYPEDSIGNATURES)
+
+Ensure that a LAS `header` is consistent with a given `pointcloud` data in a specific LAS `point_format`, coupled with sets of `vlrs`, `evlrs` and `user_defined_bytes`
+"""
+function make_consistent_header!(header::LasHeader, 
+                                pointcloud::AbstractVector{<:NamedTuple},
+                                vlrs::Vector{<:LasVariableLengthRecord}, 
+                                evlrs::Vector{<:LasVariableLengthRecord},
+                                user_defined_bytes::Vector{UInt8})
+    header_size = get_header_size_from_version(las_version(header))
+    vlr_size = isempty(vlrs) ? 0 : sum(sizeof.(vlrs))
+    point_data_offset = header_size + vlr_size + length(user_defined_bytes)
+    
+    set_point_data_offset!(header, point_data_offset)
+    
+    set_point_record_count!(header, length(pointcloud))
+    returns = haskey(pointcloud, :returnnumber) ? pointcloud.returnnumber : ones(Int, length(pointcloud))
+    points_per_return = ntuple(r -> count(returns .== r), num_return_channels(header))
+    set_number_of_points_by_return!(header, points_per_return)
+
+    if !isempty(vlrs)
+        set_num_vlr!(header, length(vlrs))
+    end
+    if !isempty(evlrs)
+        set_num_evlr!(header, length(evlrs))
+    end
+
+    ogc_wkt_records = is_ogc_wkt_record.(vlrs)
+    @assert count(ogc_wkt_records) ≤ 1 "Can't set more than 1 OGC WKT Transform in VLR's!"
+
+    this_format = point_format(header)
+    if (get_point_format_id(this_format) ≥ 6) || any(ogc_wkt_records)
+        set_wkt_bit!(header)
+    end
+
+    if this_format <: LasPointWavePacket
+        # only setting the external waveform bit since the internal one is deprecated
+        set_waveform_external_bit!(header)
+    else
+        # don't want waveform bits set for point formats that don't have waveform data
+        unset_waveform_bits!(header)
+    end
+end

@@ -61,6 +61,9 @@ mutable struct LasDataset
         las_cols = cols[these_are_las_cols]
         other_cols = cols[.!these_are_las_cols]
         las_pc = Table(NamedTuple{ (las_cols...,) }( (map(col -> getproperty(pointcloud, col), las_cols)...,) ))
+        
+        make_consistent_header!(header, las_pc, vlrs, evlrs, user_defined_bytes)
+
         user_pc = isempty(other_cols) ? missing : FlexTable(NamedTuple{ (other_cols...,) }( (map(col -> getproperty(pointcloud, col), other_cols)...,) ))
         for col ∈ other_cols
             # account for potentially having an undocumented entry - in this case, don't add an ExtraBytes VLR

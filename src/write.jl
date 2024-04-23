@@ -78,7 +78,7 @@ function write_las(io::IO, pointcloud::AbstractVector{<:NamedTuple},
                     user_defined_bytes::Vector{UInt8},
                     scale::Real) where {TPoint}
     # automatically construct a header that's consistent with the data and point format we've supplied
-    header = make_consistent_header(pointcloud, point_format, vlrs, evlrs, scale)
+    header = make_consistent_header(pointcloud, point_format, vlrs, evlrs, user_defined_bytes, scale)
     write_las(io, LasDataset(header, pointcloud, vlrs, evlrs, user_defined_bytes))
 end
 
@@ -111,51 +111,6 @@ function write_las(io::IO, las::LasDataset)
     end
 
     return nothing
-end
-
-"""
-    $(TYPEDSIGNATURES)
-
-Construct a LAS header that is consistent with given `pointcloud` data in a specific LAS `point_format`, coupled with sets of `vlrs` and `evlrs`
-"""
-function make_consistent_header(pointcloud::AbstractVector{<:NamedTuple}, 
-                                point_format::Type{TPoint},
-                                vlrs::Vector{<:LasVariableLengthRecord}, 
-                                evlrs::Vector{<:LasVariableLengthRecord},
-                                scale::Real) where {TPoint <: LasPoint}
-    version = lasversion_for_point(point_format)
-    header_size = get_header_size_from_version(version)
-    vlr_size = isempty(vlrs) ? 0 : sum(sizeof.(vlrs))
-    point_data_offset = header_size + vlr_size
-
-    spatial_info = get_spatial_info(pointcloud; scale = scale)
-
-    header = LasHeader(; 
-        las_version = version, 
-        data_format_id = UInt8(get_point_format_id(point_format)), 
-        data_record_length = UInt16(byte_size(point_format)),
-        data_offset = UInt32(point_data_offset),
-        n_vlr = UInt32(length(vlrs)),
-        spatial_info = spatial_info,
-    )
-
-    set_point_record_count!(header, length(pointcloud))
-    if !isempty(evlrs)
-        set_num_evlr!(header, length(evlrs))
-    end
-
-    returns = haskey(pointcloud, :returnnumber) ? pointcloud.returnnumber : ones(Int, length(pointcloud))
-    points_per_return = ntuple(r -> count(returns .== r), num_return_channels(header))
-    set_number_of_points_by_return!(header, points_per_return)
-
-    ogc_wkt_records = is_ogc_wkt_record.(vlrs)
-    @assert count(ogc_wkt_records) ≤ 1 "Can't set more than 1 OGC WKT Transform in VLR's!"
-
-    if any(ogc_wkt_records)
-        set_wkt_bit!(header)
-    end
-
-    return header
 end
 
 """
