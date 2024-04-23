@@ -3,7 +3,6 @@
 
 A variable length record included in a LAS file. This stores a particular data type `TData` in the record, which can be
 a known VLR such as a WKT transform or a custom struct.
-    
 To properly define I/O methods for VLR's of custom structs, you must register which user and record ID's this struct type 
 will use using 
 
@@ -75,8 +74,10 @@ function check_data_against_record_id(data, user_id::String, record_id::Integer,
                 @assert record_id == ID_GEOASCIIPARAMSTAG "Record ID for GeoAsciiParamsTag must be $(ID_GEOASCIIPARAMSTAG)"
             elseif data_type == ClassificationLookup
                 @assert record_id == ID_CLASSLOOKUP "Record ID for Classification Lookup must be $(ID_CLASSLOOKUP)"
-            elseif data_type == String
-                @assert record_id == 3 "Record ID for text area description must be $(ID_TEXTDESCRIPTION)"
+            elseif data_type == TextAreaDescription
+                @assert record_id == ID_TEXTDESCRIPTION "Record ID for text area description must be $(ID_TEXTDESCRIPTION)"
+            elseif data_type <: ExtraBytes
+                @assert record_id == ID_EXTRABYTES "Record ID for Extra Bytes must be $(ID_EXTRABYTES)"
             elseif typeof(data) == WaveformPacketDescriptor
                 @assert 99 < record_id < 355 "Waveform packet descriptors must have record IDs between 100 and 354"
             end
@@ -131,7 +132,7 @@ Register a new VLR data type `type` by associating it with an official `user_id`
 macro register_vlr_type(type, user_id, record_ids)
     return quote
         # restrict types for inputs
-        if !($(esc(type)) isa DataType)
+        if !($(esc(type)) isa DataType) && !($(esc(type)) isa UnionAll)
             throw(AssertionError("Type must be a DataType, not $(typeof($(esc(type))))"))
         end
         if !($(esc(user_id)) isa AbstractString)
@@ -232,3 +233,8 @@ is_srs(vlr::LasVariableLengthRecord) = vlr.record_id in (
     ID_GEOKEYDIRECTORYTAG,
     ID_GEODOUBLEPARAMSTAG,
     ID_GEOASCIIPARAMSTAG)
+
+function extract_vlr_type(vlrs::Vector{<:LasVariableLengthRecord}, user_id::String, id::Integer)
+    matches_ids = findall(vlr -> (get_user_id(vlr) == user_id) && (get_record_id(vlr) == id), vlrs)
+    return vlrs[matches_ids]
+end

@@ -215,6 +215,9 @@ const LasPointColor = Union{LasPoint2, LasPoint3, LasPoint5, LasPoint7, LasPoint
 const LasPointTime = Union{LasPoint1, LasPoint3, LasPoint4, LasPoint5, LasPoint6, LasPoint7, LasPoint8, LasPoint9, LasPoint10}
 const LasPoint_0_5 = Union{LasPoint0, LasPoint1, LasPoint2, LasPoint3, LasPoint4, LasPoint5}
 const LasPoint_6_10 = Union{LasPoint6, LasPoint7, LasPoint8, LasPoint9, LasPoint10}
+const LasPointNIR = Union{LasPoint8, LasPoint10}
+const LasPointWavePacket = Union{LasPoint4, LasPoint5, LasPoint9, LasPoint10}
+const ALL_LAS_POINTS = [LasPoint0, LasPoint1, LasPoint2, LasPoint3, LasPoint4, LasPoint5, LasPoint6, LasPoint7, LasPoint8, LasPoint9, LasPoint10]
 
 get_point_format(::Type{LasPoint{0}}) = LasPoint0
 get_point_format(::Type{LasPoint{1}}) = LasPoint1

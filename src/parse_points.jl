@@ -187,7 +187,7 @@ function get_int_xyz(::Type{TInt}, position::SVector{3, Float64}, xyz::SpatialIn
 end
 
 function get_position(point::T, xyz::SpatialInfo) where {N, T <: LasPoint{N}}
-    SVector{3, Float64}(xcoord(point.x, xyz), ycoord(point.y, xyz), zcoord(point.z, xyz))
+    SVector{3, Float64}(xcoord(point, xyz), ycoord(point, xyz), zcoord(point, xyz))
 end
 
 function get_intensity(point::T)  where {N, T <: LasPoint{N}}
@@ -661,6 +661,10 @@ function laspoint(
         wave_z_t,
     )
 end
+
+has_columns(::Type{LasPoint10}) = (:position, :intensity, :classification, las14_flag_byte_content..., :scan_angle, :user_data, :point_source_id, :gps_time, :color, :nir)
+
+RECOGNISED_LAS_COLUMNS = [:id, unique(reduce(vcat, map(point_type -> collect(has_columns(point_type)), ALL_LAS_POINTS)))...]
 
 struct Extractor{T} 
     xyz::SpatialInfo

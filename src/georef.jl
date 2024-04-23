@@ -113,7 +113,7 @@ function Base.read(io::IO, ::Type{GeoKeys})
     )
 end
 
-@register_vlr_type(GeoKeys, LAS_PROJ_USER_ID, ID_GEOKEYDIRECTORYTAG)
+@register_vlr_type GeoKeys LAS_PROJ_USER_ID ID_GEOKEYDIRECTORYTAG
 
 """
     $(TYPEDEF)
@@ -130,7 +130,7 @@ Base.sizeof(data::GeoDoubleParamsTag) = sizeof(data.double_params)
 
 Base.write(io::IO, data::GeoDoubleParamsTag) = write(io, data.double_params)
 
-@register_vlr_type(GeoDoubleParamsTag, LAS_PROJ_USER_ID, ID_GEODOUBLEPARAMSTAG)
+@register_vlr_type GeoDoubleParamsTag LAS_PROJ_USER_ID ID_GEODOUBLEPARAMSTAG
 
 function read_vlr_data(io::IO, ::Type{GeoDoubleParamsTag}, nb::Integer)
     double_params = zeros(nb ÷ 8)
@@ -155,7 +155,7 @@ Base.:(==)(t1::GeoAsciiParamsTag, t2::GeoAsciiParamsTag) = (t1.ascii_params == t
 Base.sizeof(data::GeoAsciiParamsTag) = data.nb
 Base.write(io::IO, data::GeoAsciiParamsTag) = writestring(io, data.ascii_params, data.nb)
 
-@register_vlr_type(GeoAsciiParamsTag, LAS_PROJ_USER_ID, ID_GEOASCIIPARAMSTAG)
+@register_vlr_type GeoAsciiParamsTag LAS_PROJ_USER_ID ID_GEOASCIIPARAMSTAG
 
 function read_vlr_data(io::IO, ::Type{GeoAsciiParamsTag}, nb::Integer)
     ascii_params = readstring(io, nb)
@@ -196,7 +196,7 @@ function Base.write(io::IO, ogc_wkt::OGC_WKT)
     writestring(io, ogc_wkt.wkt_str, ogc_wkt.nb)
 end
 
-@register_vlr_type(OGC_WKT, LAS_PROJ_USER_ID, ID_OGCWKTTAG)
+@register_vlr_type OGC_WKT LAS_PROJ_USER_ID ID_OGCWKTTAG
 
 function read_vlr_data(io::IO, ::Type{OGC_WKT}, nb::Int)
     wkt_str = readstring(io, nb)
@@ -245,19 +245,19 @@ Given an OGC WKT coordinate system `wkt`, attempt to parse conversion units (to 
 Can opt to convert all axes units or just the vertical.
 """
 function conversion_from_vlrs(wkt::OGC_WKT; 
-                                convert_x_y_z_units::Union{String, Missing} = missing, 
+                                convert_x_y_units::Union{String, Missing} = missing, 
                                 convert_z_units::Union{String, Missing} = missing)::Union{Missing, SVector{3}}
     
     unit = get_horizontal_unit(wkt)
     v_unit = get_vertical_unit(wkt)
 
     # Overwrite with operator specified units
-    if !ismissing(convert_x_y_z_units)
+    if !ismissing(convert_x_y_units)
         if ismissing(unit) 
-            unit = convert_x_y_z_units
-        elseif convert_x_y_z_units != unit
-            @warn "You say x/y/z units are $(convert_x_y_z_units), but las header says $(unit) -- hope you're right!"
-            unit = convert_x_y_z_units
+            unit = convert_x_y_units
+        elseif convert_x_y_units != unit
+            @warn "You say x/y/z units are $(convert_x_y_units), but las header says $(unit) -- hope you're right!"
+            unit = convert_x_y_units
         end
     end
 

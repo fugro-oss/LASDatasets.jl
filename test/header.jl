@@ -22,7 +22,7 @@
     @test point_record_length(header) == UInt16(28)
     set_point_record_length!(header, 30)
     @test point_record_length(header) == UInt16(30)
-    @test record_format(header) == LasRecord{LasPoint1, 2}
+    @test record_format(header) == LAS.UndocPointRecord{LasPoint1, 2}
     @test point_format(header) == LasPoint1
     @test number_of_points(header) == 100
     set_point_record_count!(header, 150)
@@ -77,7 +77,7 @@
     @test point_data_offset(header) == 227
     @test point_record_length(header) == 20
     @test point_format(header) == LasPoint0
-    @test record_format(header) == LasRecord{LasPoint0, 0}
+    @test record_format(header) == LAS.PointRecord{LasPoint0}
     @test number_of_points(header) == 497536
     @test number_of_vlrs(header) == 0
     @test number_of_evlrs(header) == 0
