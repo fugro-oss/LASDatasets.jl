@@ -39,7 +39,7 @@ las = load_las("example.las", [:position, :classification])
 Note that when reading data, the position units for your points are automatically converted to metres provided they are specified correctly in an *OGC Coordinate System WKT* string. If not, you can still manually specify what units you would like to convert from (note that they must match the unit naming convention given by *OGC WKTs*), e.g.
 
 ```julia
-las = load_las("example.las"; convert_x_y_z_units = "us-ft")
+las = load_las("example.las"; convert_x_y_units = "us-ft")
 ```
 
 ```@docs; canonical = false
