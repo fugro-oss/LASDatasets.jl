@@ -21,6 +21,5 @@ makedocs(
 
 deploydocs(
     repo = "github.com/fugro-oss/LAS.jl.git",
-    versions = ["stable" => "v^", "v#.#", "dev" => "main"],
     push_preview=true
 )
