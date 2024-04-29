@@ -4,7 +4,7 @@ push!(LOAD_PATH,"../src/")
 
 makedocs(
     modules = [LAS],
-    sitename = "LAS.jl Documentation",
+    sitename = "LAS.jl",
     repo = "https://github.com/fugro-oss/LAS.jl",
     pages = [
         "Home" => "index.md",
@@ -20,7 +20,7 @@ makedocs(
 )
 
 deploydocs(
-    repo = "github.com/fugro-oss/LAS.jl",
+    repo = "github.com/fugro-oss/LAS.jl.git",
     versions = ["stable" => "v^", "v#.#", "dev" => "main"],
     push_preview=true
 )
