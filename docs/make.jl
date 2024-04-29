@@ -5,7 +5,6 @@ push!(LOAD_PATH,"../src/")
 makedocs(
     modules = [LAS],
     sitename = "LAS.jl",
-    repo = "https://github.com/fugro-oss/LAS.jl",
     pages = [
         "Home" => "index.md",
         "Interface" => "interface.md",
