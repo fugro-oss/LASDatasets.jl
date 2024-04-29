@@ -77,8 +77,25 @@ function load_vlrs(file_name::AbstractString)
     end
 end
 
+
 function load_vlrs(io::IO, header::LasHeader)
     Vector{LasVariableLengthRecord}(map(_ -> read(io, LasVariableLengthRecord, false), 1:number_of_vlrs(header)))
+end
+
+function read_laz_header_and_vlrs(file_name::AbstractString)
+    # Setup laszip reader
+    laszip_reader = Ref{Ptr{Cvoid}}()
+    @check laszip_reader[] laszip_create(laszip_reader)
+
+    # Open lasfile
+    @check laszip_reader[] laszip_open_reader(laszip_reader[], file_name, Ref{Cint}(0))
+
+    # Get a pointer to the header
+    header_ptr = Ref{Ptr{LazHeader}}()
+    @check laszip_reader[] laszip_get_header_pointer(laszip_reader[], header_ptr)
+    laz_header = unsafe_load(header_ptr[])
+    header, vlrs, user_defined_bytes = extract_laz_header_info(laz_header)
+    return header, vlrs, user_defined_bytes
 end
 
 """

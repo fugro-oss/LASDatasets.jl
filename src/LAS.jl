@@ -7,6 +7,7 @@ using Dates
 using DocStringExtensions
 using FileIO
 using FixedPointNumbers
+using LASzip_jll
 using PackedReadWrite
 import Pkg.Types: read_project
 using Printf
@@ -25,6 +26,8 @@ include("header.jl")
 include("parse_points.jl")
 include("records.jl")
 include("dataset.jl")
+include("laz_interface.jl")
+include("laszip.jl")
 include("read.jl")
 include("write.jl")
 

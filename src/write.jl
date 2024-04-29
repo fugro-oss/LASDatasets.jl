@@ -49,10 +49,10 @@ function save_las(file_name::AbstractString,
 end
 
 function write_las(io::IO, pointcloud::AbstractVector{<:NamedTuple},
-                    vlrs::Vector{<:LasVariableLengthRecord}, 
-                    evlrs::Vector{<:LasVariableLengthRecord}, 
-                    user_defined_bytes::Vector{UInt8},
-                    scale::Real)
+                    vlrs::Vector{<:LasVariableLengthRecord} = LasVariableLengthRecord[], 
+                    evlrs::Vector{<:LasVariableLengthRecord} = LasVariableLengthRecord[], 
+                    user_defined_bytes::Vector{UInt8} = UInt8[],
+                    scale::Real = POINT_SCALE)
     point_format = get_point_format(pointcloud)
     write_las(io, pointcloud, point_format, vlrs, evlrs, user_defined_bytes, scale)
 end
