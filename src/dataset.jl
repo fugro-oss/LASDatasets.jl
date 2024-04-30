@@ -358,6 +358,7 @@ end
 Construct an extra bytes VLR with a field name `col_name` and data type `T`
 """
 function construct_extra_bytes_vlr(col_name::Symbol, ::Type{T}) where T
-    extra_bytes = ExtraBytes(0x00, String(col_name), zero(T), zero(T), zero(T), zero(T), zero(T), "Custom Column $(col_name)")
+    @assert length(String(col_name)) ≤ 32 "Custom column name $(col_name) too long! Must be ≤ 32 Bytes, got $(length(String(col_name))) Bytes"
+    extra_bytes = ExtraBytes(0x00, String(col_name), zero(T), zero(T), zero(T), zero(T), zero(T), "$(col_name)")
     LasVariableLengthRecord(LAS_SPEC_USER_ID, ID_EXTRABYTES, String(col_name), extra_bytes)
 end

@@ -198,12 +198,12 @@ end
 
 @register_vlr_type OGC_WKT LAS_PROJ_USER_ID ID_OGCWKTTAG
 
-function read_vlr_data(io::IO, ::Type{OGC_WKT}, nb::Int)
+function read_vlr_data(io::IO, ::Type{OGC_WKT}, nb::Integer)
     wkt_str = readstring(io, nb)
-    return OGC_WKT(wkt_str, nb)
+    return OGC_WKT(wkt_str, Int(nb))
 end
 
-function OGC_WKT(wkt_string::String, nb::Int = sizeof(wkt_string))
+function OGC_WKT(wkt_string::String, nb::Integer = sizeof(wkt_string))
     # try and parse the wkt string
     src = missing
     unit = vert_unit = missing
