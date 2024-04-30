@@ -794,7 +794,7 @@ function make_consistent_header!(header::LasHeader,
     set_point_data_offset!(header, point_data_offset)
     
     set_point_record_count!(header, length(pointcloud))
-    returns = haskey(pointcloud, :returnnumber) ? pointcloud.returnnumber : ones(Int, length(pointcloud))
+    returns = (:returnnumber ∈ columnnames(pointcloud)) ? pointcloud.returnnumber : ones(Int, length(pointcloud))
     points_per_return = ntuple(r -> count(returns .== r), num_return_channels(header))
     set_number_of_points_by_return!(header, points_per_return)
 
