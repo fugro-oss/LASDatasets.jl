@@ -37,15 +37,12 @@ end
 Ingest a LAS header from a file
 """
 function load_header(file_name::AbstractString)
-    if is_laz(file_name)
-        header, _, _ = read_laz_header_and_vlrs(file_name)
-        return header
-    else
-        header = open_las(file_name, "r") do io
-            read(io, LasHeader)
-        end
-        return header
+    open_func = get_open_func(file_name)
+
+    header = open_func(file_name, "r") do io
+        read(io, LasHeader)
     end
+    return header
 end
 
 load_header(io::IO) = read(seek(io, 0), LasHeader)
@@ -58,24 +55,23 @@ Ingest a set of variable length records from a LAS file
 $(METHODLIST)
 """
 function load_vlrs(file_name::AbstractString, header::LasHeader)
-    vlrs = open_las(file_name, "r") do io
+    open_func = get_open_func(file_name)
+    vlrs = open_func(file_name, "r") do io
+        seek(io, header_size(header))
         load_vlrs(io, header)
     end
     return vlrs
 end
 
 function load_vlrs(file_name::AbstractString)
-    if is_laz(file_name)
-        _, vlrs, _ = read_laz_header_and_vlrs(file_name)
-        return vlrs
-    else
-        vlrs = open_las(file_name, "r") do io
-            header = read(io, LasHeader)
-            load_vlrs(io, header)
-        end
-        return vlrs
+    open_func = get_open_func(file_name)
+    vlrs = open_func(file_name, "r") do io
+        header = read(io, LasHeader)
+        load_vlrs(io, header)
     end
+    return vlrs
 end
+
 
 function load_vlrs(io::IO, header::LasHeader)
     Vector{LasVariableLengthRecord}(map(_ -> read(io, LasVariableLengthRecord, false), 1:number_of_vlrs(header)))

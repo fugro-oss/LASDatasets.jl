@@ -1,4 +1,4 @@
-@testset "LAS Content" begin
+@testset "LAS Dataset" begin
     num_points = 100
     pc = Table(
         position = rand(SVector{3, Float64}, num_points),
