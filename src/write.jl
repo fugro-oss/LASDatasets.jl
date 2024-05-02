@@ -12,6 +12,7 @@ Saves a pointcloud to LAS or LAZ. The appropriate LAS version and point format i
 * `evlrs` : Collection of Extended Variable Length Records to write to the LAS file, default `LasVariableLengthRecord[]`
 * `user_defined_bytes` : Any user-defined bytes to write in between the VLRs and point records, default `UInt8[]`
 * `scale` : Scaling factor applied to points on writing, default `LAS.POINT_SCALE`
+* `compressed` : Whether or not data is to be written to a compressed .laz file, default false
 
 ---
 $(METHODLIST)
@@ -24,14 +25,14 @@ function save_las(file_name::AbstractString, pointcloud::AbstractVector{<:NamedT
                         kwargs...)
     open_func = get_open_func(file_name)
     open_func(file_name, "w") do io
-        write_las(io, pointcloud, vlrs, evlrs, user_defined_bytes, scale)
+        write_las(io, pointcloud, vlrs, evlrs, user_defined_bytes, scale, is_laz(file_name))
     end
 end
 
 function save_las(file_name::AbstractString, las::LasDataset)
     open_func = get_open_func(file_name)
     open_func(file_name, "w") do io
-        write_las(io, las)
+        write_las(io, las, is_laz(file_name))
     end
 end
 
@@ -44,7 +45,7 @@ function save_las(file_name::AbstractString,
                     scale::Real = POINT_SCALE) where {TRecord <: LasRecord}
     open_func = get_open_func(file_name)
     open_func(file_name, "w") do io
-        write_las(io, header, point_records, vlrs, evlrs, user_defined_bytes, scale)
+        write_las(io, header, point_records, vlrs, evlrs, user_defined_bytes, scale, is_laz(file_name))
     end
 end
 
@@ -52,9 +53,10 @@ function write_las(io::IO, pointcloud::AbstractVector{<:NamedTuple},
                     vlrs::Vector{<:LasVariableLengthRecord} = LasVariableLengthRecord[], 
                     evlrs::Vector{<:LasVariableLengthRecord} = LasVariableLengthRecord[], 
                     user_defined_bytes::Vector{UInt8} = UInt8[],
-                    scale::Real = POINT_SCALE)
+                    scale::Real = POINT_SCALE,
+                    compressed::Bool = false)
     point_format = get_point_format(pointcloud)
-    write_las(io, pointcloud, point_format, vlrs, evlrs, user_defined_bytes, scale)
+    write_las(io, pointcloud, point_format, vlrs, evlrs, user_defined_bytes, scale, compressed)
 end
 
 
@@ -70,34 +72,57 @@ Write a pointcloud and additional VLR's and user-defined bytes to an IO stream i
 * `evlrs` : Collection of Extended Variable Length Records to write to `io`
 * `user_defined_bytes` : Any user-defined bytes to write in between the VLRs and point records
 * `scale` : Scaling factor applied to points on writing
+* `compressed` : Whether or not data is to be written to a compressed .laz file, default false
 """
 function write_las(io::IO, pointcloud::AbstractVector{<:NamedTuple}, 
                     point_format::Type{TPoint},
                     vlrs::Vector{<:LasVariableLengthRecord}, 
                     evlrs::Vector{<:LasVariableLengthRecord}, 
                     user_defined_bytes::Vector{UInt8},
-                    scale::Real) where {TPoint}
+                    scale::Real,
+                    compressed::Bool = false) where {TPoint}
     # automatically construct a header that's consistent with the data and point format we've supplied
     header = make_consistent_header(pointcloud, point_format, vlrs, evlrs, user_defined_bytes, scale)
-    write_las(io, LasDataset(header, pointcloud, vlrs, evlrs, user_defined_bytes))
+    write_las(io, LasDataset(header, pointcloud, vlrs, evlrs, user_defined_bytes), compressed)
 end
 
-function write_las(io::IO, las::LasDataset)
+function write_las(io::IO, las::LasDataset, compressed::Bool = false)
     header = get_header(las)
-
+    vlrs = get_vlrs(las)
+    
     pc = get_pointcloud(las)
-    write(io, header)
-
-    for vlr ∈ get_vlrs(las)
-        write(io, vlr)
-    end
-
-    write(io, get_user_defined_bytes(las))
 
     this_point_format = point_format(header)
     xyz = spatial_info(header)
 
     user_fields = ismissing(las._user_data) ? () : filter(c -> c != :undocumented_bytes, columnnames(las._user_data))
+
+    # LASzip doesn't support extra bytes :(
+    if compressed && !isempty(user_fields)
+        # need to make copies here so we don't permanently modify the LAS dataset
+        header = deepcopy(get_header(las))
+        vlrs = deepcopy(get_vlrs(las))
+        @warn "Can't compress custom user fields into LAZ! Ignoring user fields and extra bytes VLRs..."
+        user_fields = ()
+        # find indices of existing extra bytes VLRs
+        extra_bytes_idxs = findall(vlr -> (get_user_id(vlr) == LAS_SPEC_USER_ID) && (get_record_id(vlr) == ID_EXTRABYTES), vlrs)
+        # need to adjust the data record length in the header to remove these extra bytes
+        for i ∈ extra_bytes_idxs
+            header.data_record_length -= sizeof(data_type(get_data(vlrs[i])))
+        end
+        # make sure we remove the extra bytes vlrs and adjust the header info
+        header.n_vlr -= length(extra_bytes_idxs)
+        header.data_offset -= sum(sizeof.(vlrs[extra_bytes_idxs]))
+        deleteat!(vlrs, extra_bytes_idxs)
+    end
+
+    write(io, header)
+
+    for vlr ∈ vlrs
+        write(io, vlr)
+    end
+
+    write(io, get_user_defined_bytes(las))
 
     undoc_bytes = :undocumented_bytes ∈ columnnames(pc) ? pc.undocumented_bytes : fill(SVector{0, UInt8}(), length(pc))
 

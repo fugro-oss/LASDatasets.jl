@@ -508,4 +508,19 @@ end
             @test all(isapprox.(getproperty(new_pc, col), getproperty(pc, col); atol = LAS.POINT_SCALE))
         end
     end
+
+    # LASzip doesn't support writing extra bytes, so make sure we handle this gracefully
+    mktempdir() do tmp
+        file_name = joinpath(tmp, "pc.laz")
+        save_las(file_name, pc)
+        new_las = load_las(file_name, ALL_LAS_COLUMNS)
+        new_pc = get_pointcloud(new_las)
+        @test :my_column ∉ columnnames(new_pc)
+        for col ∈ filter(col -> col ∉ (:thing, :other_thing), columnnames(pc))
+            @assert all(isapprox.(getproperty(new_pc, col), getproperty(pc, col); atol = LAS.POINT_SCALE))
+        end
+        @test isempty(get_vlrs(new_las))
+        @test number_of_vlrs(get_header(new_las)) == 0
+        @test point_record_length(get_header(new_las)) == 20
+    end
 end
