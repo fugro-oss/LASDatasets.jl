@@ -3,6 +3,8 @@
 [![CI](https://github.com/fugro-oss/LAS.jl/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/fugro-oss/LAS.jl/actions/workflows/ci.yml)
 [![](https://img.shields.io/badge/docs-latest-blue.svg)](https://fugro-oss.github.io/LAS.jl/dev)
 
+You can find the latest documentation [here](https://fugro-oss.github.io/LAS.jl/dev/)
+
 A Julia package for reading and writing *LAS* data. *LAS* is a public file format for saving and loading 3D point cloud data, and its source repository can be found [here](https://github.com/ASPRSorg/LAS). This package currently supports *LAS* specifications 1.1-1.4 (see [here](https://www.asprs.org/wp-content/uploads/2019/03/LAS_1_4_r14.pdf) for the 1.4 spec.)
 
 Some key features included in this package are:
