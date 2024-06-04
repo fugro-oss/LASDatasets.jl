@@ -256,13 +256,17 @@ Can override the unit conversion by manually specifying a unit to convert on the
 function convert_units!(pointcloud::AbstractVector{<:NamedTuple}, vlrs::Vector{LasVariableLengthRecord}, convert_x_y_units::Union{Missing, String}, convert_z_units::Union{Missing, String})
     if :position ∈ columnnames(pointcloud)
         these_are_wkts = is_ogc_wkt_record.(vlrs)
-        @assert count(these_are_wkts) == 1 "Expected to find 1 OGC WKT VLR, instead found $(count(these_are_wkts))"
-
-        ogc_wkt = get_data(vlrs[findfirst(these_are_wkts)])
-        conversion = conversion_from_vlrs(ogc_wkt, convert_x_y_units = convert_x_y_units, convert_z_units = convert_z_units)
-        if !ismissing(conversion) && any(conversion .!= 1.0)
-            @info "Positions converted to meters using conversion $(conversion)"
-            pointcloud = pointcloud.position .= map(p -> p .* conversion, pointcloud.position)
+        # we are not requesting unit conversion and there is no OGC WKT VLR
+        if ismissing(convert_x_y_units) && ismissing(convert_z_units) && count(these_are_wkts) == 0
+            return nothing
+        else 
+            @assert count(these_are_wkts) == 1 "Expected to find 1 OGC WKT VLR, instead found $(count(these_are_wkts))"
+            ogc_wkt = get_data(vlrs[findfirst(these_are_wkts)])
+            conversion = conversion_from_vlrs(ogc_wkt, convert_x_y_units = convert_x_y_units, convert_z_units = convert_z_units)
+            if !ismissing(conversion) && any(conversion .!= 1.0)
+                @info "Positions converted to meters using conversion $(conversion)"
+                pointcloud = pointcloud.position .= map(p -> p .* conversion, pointcloud.position)
+            end
         end
     end
 end
