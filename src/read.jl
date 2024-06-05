@@ -8,8 +8,8 @@ Load a LAS dataset from a source file
 * `fields` : Name of the LAS point fields to extract as columns in the output data. Default `DEFAULT_LAS_COLUMNS`
 """
 function load_las(file_name::AbstractString, 
-    fields::TFields = DEFAULT_LAS_COLUMNS;
-    kwargs...) where {TFields}
+                    fields::TFields = DEFAULT_LAS_COLUMNS;
+                    kwargs...) where {TFields}
 
     open_func = get_open_func(file_name)
 
@@ -255,10 +255,12 @@ Can override the unit conversion by manually specifying a unit to convert on the
 """
 function convert_units!(pointcloud::AbstractVector{<:NamedTuple}, vlrs::Vector{LasVariableLengthRecord}, convert_x_y_units::Union{Missing, String}, convert_z_units::Union{Missing, String})
     if :position ∈ columnnames(pointcloud)
-        if !ismissing(convert_x_y_units) && !ismissing(convert_z_units)
-            these_are_wkts = is_ogc_wkt_record.(vlrs)
+        these_are_wkts = is_ogc_wkt_record.(vlrs)
+        # we are not requesting unit conversion and there is no OGC WKT VLR
+        if ismissing(convert_x_y_units) && ismissing(convert_z_units) && count(these_are_wkts) == 0
+            return nothing
+        else 
             @assert count(these_are_wkts) == 1 "Expected to find 1 OGC WKT VLR, instead found $(count(these_are_wkts))"
-
             ogc_wkt = get_data(vlrs[findfirst(these_are_wkts)])
             conversion = conversion_from_vlrs(ogc_wkt, convert_x_y_units = convert_x_y_units, convert_z_units = convert_z_units)
             if !ismissing(conversion) && any(conversion .!= 1.0)
