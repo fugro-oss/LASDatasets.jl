@@ -49,5 +49,5 @@ This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md
 
 This package started as a fork off of [LasIO.jl](https://github.com/visr/LasIO.jl), with modifications being made to add *LAS* v1.4 support and some *API*/functionality changes. 
 
-* Thanks to @visr for the initial *LasIO.jl* package
-* Thanks to all developers in *LasIO.jl* and [*LazIO.jl*](https://github.com/evetion/LazIO.jl), including @evetion
+* Thanks to [@visr](https://github.com/visr) as the authour of the *LasIO.jl* package
+* Thanks to all developers in *LasIO.jl* and [*LazIO.jl*](https://github.com/evetion/LazIO.jl), including [@evetion](https://github.com/evetion)
