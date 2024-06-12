@@ -5,7 +5,7 @@ Load a LAS dataset from a source file
 
 # Arguments
 * `file_name` : Name of the LAS file to extract data from
-* `fields` : Name of the LAS point fields to extract as columns in the output data. Default `DEFAULT_LAS_COLUMNS`
+* `fields` : Name of the LAS point fields to extract as columns in the output data. If set to `nothing`, ingest all available columns. Default `DEFAULT_LAS_COLUMNS`
 """
 function load_las(file_name::AbstractString, 
                     fields::TFields = DEFAULT_LAS_COLUMNS;
@@ -25,7 +25,7 @@ end
 
 Ingest LAS point data in a tabular format
 """
-function load_pointcloud(file_name::AbstractString, fields::AbstractVector{Symbol} = collect(DEFAULT_LAS_COLUMNS); kwargs...)
+function load_pointcloud(file_name::AbstractString, fields::Union{Nothing, AbstractVector{Symbol}} = collect(DEFAULT_LAS_COLUMNS); kwargs...)
     las = load_las(file_name, fields; kwargs...)
     return get_pointcloud(las)
 end
@@ -106,7 +106,9 @@ function read_las_data(io::TIO, required_columns::TTuple=DEFAULT_LAS_COLUMNS;
     pos = header.header_size + vlr_length
     user_defined_bytes = read(io, header.data_offset - pos)
 
-    extra_bytes = Vector{ExtraBytes}(map(vlr -> get_data(vlr), extract_vlr_type(vlrs, LAS_SPEC_USER_ID, ID_EXTRABYTES)))
+    extra_bytes_vlr = extract_vlr_type(vlrs, LAS_SPEC_USER_ID, ID_EXTRABYTES)
+    @assert length(extra_bytes_vlr) ≤ 1 "Found multiple extra bytes columns!"
+    extra_bytes = isempty(extra_bytes_vlr) ? ExtraBytes[] : get_extra_bytes(get_data(extra_bytes_vlr[1]))
 
     this_format = record_format(header, extra_bytes)
     xyz = spatial_info(header)
@@ -194,11 +196,12 @@ Helper function that finds the names of user-defined point fields that have been
 Note according to spec that user-defined array field names must be of the form `col [0], col[1], ..., col[N]` where `N` is the dimension of the user field
 """
 function get_user_fields_for_table(records::Vector{TRecord}, Names::Tuple, required_columns::TTuple) where {TRecord <: Union{ExtendedPointRecord, FullRecord}, TTuple}
-    user_fields = filter(field -> get_base_field_name(field) ∈ required_columns, Names)
+    get_all_fields = isnothing(required_columns)
+    user_fields = filter(field -> get_all_fields || get_base_field_name(field) ∈ required_columns, Names)
     raw_user_data = Dict{Symbol, Vector}(field => getproperty.(getproperty.(records, :user_fields), field) for field ∈ user_fields)
     user_field_map = get_user_field_map(user_fields)
     grouped_field_names = collect(keys(user_field_map))
-    user_fields = filter(field -> field ∈ required_columns, grouped_field_names)
+    user_fields = filter(field -> get_all_fields || field ∈ required_columns, grouped_field_names)
     grouped_user_fields = group_user_fields(raw_user_data, user_field_map)
     return user_fields, grouped_user_fields
 end

@@ -413,7 +413,7 @@ creation_year(h::LasHeader) = h.creation_year
 
 Get the size of a header `h` in bytes
 """
-header_size(h::LasHeader) = h.header_size
+header_size(h::LasHeader) = Int(h.header_size)
 
 """
     $(TYPEDSIGNATURES)

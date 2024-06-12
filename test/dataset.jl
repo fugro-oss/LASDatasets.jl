@@ -60,19 +60,21 @@
     @test this_pc.other_thing == spicy_pc.other_thing
     # we should have documented our columns as extra bytes VLRs now
     vlrs = get_vlrs(las)
-    @test length(vlrs) == 2
+    @test length(vlrs) == 1
     vlr_data = get_data.(vlrs)
-    @test all(isa.(vlr_data, ExtraBytes))
-    @test (LAS.name(vlr_data[1]) == "thing") && (LAS.data_type(vlr_data[1]) == Float64)
-    @test (LAS.name(vlr_data[2]) == "other_thing") && (LAS.data_type(vlr_data[2]) == Int16)
+    @test  vlr_data[1] isa ExtraBytesCollection
+    extra_bytes = LAS.get_extra_bytes(vlr_data[1])
+    @test (LAS.name(extra_bytes[1]) == "thing") && (LAS.data_type(extra_bytes[1]) == Float64)
+    @test (LAS.name(extra_bytes[2]) == "other_thing") && (LAS.data_type(extra_bytes[2]) == Int16)
     # and our header should be updated appropriately
-    @test number_of_vlrs(header) == 2
+    @test number_of_vlrs(header) == 1
+    @test point_data_offset(header) == header_size(header) + sum(sizeof.(vlrs))
     # now add another user field directly to the dataset
     new_thing = rand(Float32, num_points)
     add_column!(las, :new_thing, new_thing)
     vlrs = get_vlrs(las)
-    @test length(vlrs) == 3
-    new_extra_bytes = get_data(vlrs[3])
+    @test length(vlrs) == 1
+    new_extra_bytes = LAS.get_extra_bytes(get_data(vlrs[1]))[3]
     @test (LAS.name(new_extra_bytes) == "new_thing") && (LAS.data_type(new_extra_bytes) == Float32)
     # we shouldn't be able to add columns of different length to the LAS data
     @test_throws AssertionError add_column!(las, :bad, rand(10))
@@ -80,8 +82,8 @@
     new_thing = rand(UInt8, num_points)
     add_column!(las, :thing, new_thing)
     vlrs = get_vlrs(las)
-    @test length(vlrs) == 3
-    new_extra_bytes = get_data(vlrs[3])
+    @test length(vlrs) == 1
+    new_extra_bytes = LAS.get_extra_bytes(get_data(vlrs[1]))[3]
     @test (LAS.name(new_extra_bytes) == "thing") && (LAS.data_type(new_extra_bytes) == UInt8)
 
     # merge some data into our dataset
@@ -98,11 +100,11 @@
     )
     add_vlr!(las, desc)
     vlrs = get_vlrs(las)
-    @test length(vlrs) == 4
-    @test vlrs[4] == desc
+    @test length(vlrs) == 2
+    @test vlrs[2] == desc
     # make sure we've updated the header correctly
     header = get_header(las)
-    @test number_of_vlrs(header) == 4
+    @test number_of_vlrs(header) == 2
     @test point_data_offset(header) == header_size(header) + sum(sizeof.(vlrs))
     # now let's replace this description for another one
     new_desc = LasVariableLengthRecord(
@@ -115,9 +117,9 @@
     # mark the old one as superseded
     set_superseded!(las, desc)
     vlrs = get_vlrs(las)
-    @test length(vlrs) == 5
-    @test vlrs[5] == new_desc
-    superseded_desc = vlrs[4]
+    @test length(vlrs) == 3
+    @test vlrs[3] == new_desc
+    superseded_desc = vlrs[2]
     @test get_user_id(superseded_desc) == get_user_id(desc)
     @test get_record_id(superseded_desc) == LAS.ID_SUPERSEDED
     @test get_description(superseded_desc) == get_description(desc)
@@ -126,9 +128,9 @@
     # we can also remove the old one entirely
     remove_vlr!(las, superseded_desc)
     vlrs = get_vlrs(las)
-    @test length(vlrs) == 4
-    @test vlrs[4] == new_desc
-    @test number_of_vlrs(get_header(las)) == 4
+    @test length(vlrs) == 2
+    @test vlrs[2] == new_desc
+    @test number_of_vlrs(get_header(las)) == 2
 
     # this stuff should also work for EVLRs
     struct Comment
@@ -140,8 +142,8 @@
     add_vlr!(las, long_comment)
     header = get_header(las)
     # vlrs should stay the same
-    @test length(get_vlrs(las)) == 4
-    @test number_of_vlrs(header) == 4
+    @test length(get_vlrs(las)) == 2
+    @test number_of_vlrs(header) == 2
     # should have updated the EVLRs
     evlrs = get_evlrs(las)
     @test length(evlrs) == 1

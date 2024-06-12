@@ -31,7 +31,7 @@ const ID_SUPERSEDED = UInt16(7)
 const ID_WAVEFORMPACKETDATA = UInt16(65535)
 
 const DEFAULT_LAS_COLUMNS = (:position, :intensity, :classification, :returnnumber, :numberofreturns, :color, :point_source_id, :gps_time, :overlap)
-const ALL_LAS_COLUMNS = SVector{0,Symbol}()
+const ALL_LAS_COLUMNS = nothing
 
 POINT_SCALE = 0.0001
 global const _VLR_TYPE_MAP = Dict()

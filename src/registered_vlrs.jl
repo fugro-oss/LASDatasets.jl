@@ -117,8 +117,6 @@ end
 Base.sizeof(::Type{ExtraBytes}) = 192
 Base.sizeof(::ExtraBytes) = Base.sizeof(ExtraBytes)
 
-@register_vlr_type ExtraBytes LAS_SPEC_USER_ID ID_EXTRABYTES
-
 # we can rely on this indexing safely since we're restricted to TData being in SUPPORTED_EXTRA_BYTES_TYPES
 data_code_from_type(::Type{TData}) where TData = (TData == Missing ? 0x00 : UInt8(indexin([TData], SUPPORTED_EXTRA_BYTES_TYPES)[1]))
 data_code_from_type(::ExtraBytes{TData}) where TData = data_code_from_type(TData)
@@ -212,6 +210,68 @@ function Base.write(io::IO, extra_bytes::ExtraBytes{TData}) where TData
     # deprecated5
     write(io, zeros(UInt8, 16))
     writestring(io, extra_bytes.description, 32)
+end
+
+"""
+    $(TYPEDEF)
+
+A collection of Extra Bytes records that gets packed into a *VLR*
+
+$(TYPEDFIELDS)
+---
+$(METHODLIST)
+"""
+struct ExtraBytesCollection
+    """Collection of Extra Bytes Records, each documenting one user field in the dataset"""
+    extra_bytes::Vector{ExtraBytes}
+
+    function ExtraBytesCollection(extra_bytes::AbstractVector{T}) where {T <: ExtraBytes}
+        new(extra_bytes)
+    end
+end
+
+ExtraBytesCollection() = ExtraBytesCollection(ExtraBytes[])
+
+"""
+    $(TYPEDSIGNATURES)
+
+Helper function that gets the set of Extra Bytes records from an Extra Bytes `collection`
+"""
+get_extra_bytes(collection::ExtraBytesCollection) = collection.extra_bytes
+
+@register_vlr_type ExtraBytesCollection LAS_SPEC_USER_ID ID_EXTRABYTES
+
+Base.sizeof(collection::ExtraBytesCollection) = length(collection.extra_bytes) * Base.sizeof(ExtraBytes)
+
+# equal if all their records are equal
+function Base.:(==)(c1::ExtraBytesCollection, c2::ExtraBytesCollection)
+    extra_bytes1 = get_extra_bytes(c1)
+    extra_bytes2 = get_extra_bytes(c2)
+    return (length(extra_bytes1) == length(extra_bytes2)) && all(extra_bytes1 .== extra_bytes2)
+end
+
+function read_vlr_data(io::IO, ::Type{ExtraBytesCollection}, nb::Integer)
+    @assert nb % sizeof(ExtraBytes) == 0 "Number of bytes $(nb) is not a multiple of Extra Bytes record size $(sizeof(ExtraBytes))"
+    num_extra_bytes_records = Int(nb/sizeof(ExtraBytes))
+    extra_bytes = map(_ -> read(io, ExtraBytes), 1:num_extra_bytes_records)
+    return ExtraBytesCollection(extra_bytes)
+end
+
+function Base.write(io::IO, collection::ExtraBytesCollection)
+    for e ∈ collection.extra_bytes
+        write(io, e)
+    end
+end
+
+"""
+    $(TYPEDSIGNATURES)
+
+Construct an extra bytes VLR with a field name `col_name` and data type `T`
+"""
+function add_extra_bytes_to_collection!(collection::ExtraBytesCollection, col_name::Symbol, ::Type{T}) where T
+    @assert length(String(col_name)) ≤ 32 "Custom column name $(col_name) too long! Must be ≤ 32 Bytes, got $(length(String(col_name))) Bytes"
+    extra_bytes = ExtraBytes(0x00, String(col_name), zero(T), zero(T), zero(T), zero(T), zero(T), "$(col_name)")
+    push!(get_extra_bytes(collection), extra_bytes)
 end
 
 """

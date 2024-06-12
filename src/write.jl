@@ -106,14 +106,18 @@ function write_las(io::IO, las::LasDataset, compressed::Bool = false)
         user_fields = ()
         # find indices of existing extra bytes VLRs
         extra_bytes_idxs = findall(vlr -> (get_user_id(vlr) == LAS_SPEC_USER_ID) && (get_record_id(vlr) == ID_EXTRABYTES), vlrs)
-        # need to adjust the data record length in the header to remove these extra bytes
-        for i ∈ extra_bytes_idxs
-            header.data_record_length -= sizeof(data_type(get_data(vlrs[i])))
+        if !isempty(extra_bytes_idxs)
+            @assert length(extra_bytes_idxs) == 1 "Found $(length(extra_bytes_idxs)) Extra Bytes VLRs when we should only have 1"
+            extra_bytes_vlr = vlrs[extra_bytes_idxs[1]]
+            # need to adjust the data record length in the header to remove these extra bytes
+            for extra_bytes ∈ get_extra_bytes(get_data(extra_bytes_vlr))
+                header.data_record_length -= sizeof(data_type(extra_bytes))
+            end
+            # make sure we remove the extra bytes vlrs and adjust the header info
+            header.n_vlr -= 1
+            header.data_offset -= sizeof(extra_bytes_vlr)
+            deleteat!(vlrs, extra_bytes_idxs)
         end
-        # make sure we remove the extra bytes vlrs and adjust the header info
-        header.n_vlr -= length(extra_bytes_idxs)
-        header.data_offset -= sum(sizeof.(vlrs[extra_bytes_idxs]))
-        deleteat!(vlrs, extra_bytes_idxs)
     end
 
     write(io, header)

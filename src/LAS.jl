@@ -48,7 +48,7 @@ export SpatialInfo, AxisInfo, Range
 
 export LasVariableLengthRecord, get_user_id, get_record_id, get_description, get_data, is_extended
 export GeoKeys, GeoDoubleParamsTag, GeoAsciiParamsTag, OGC_WKT 
-export ClassificationLookup, TextAreaDescription, ExtraBytes, WaveformPacketDescriptor, WaveformDataPackets
+export ClassificationLookup, TextAreaDescription, ExtraBytes, ExtraBytesCollection, WaveformPacketDescriptor, WaveformDataPackets
 export get_horizontal_unit, get_vertical_unit, get_wkt_string
 export get_classes, get_description, set_description!
 export @register_vlr_type, read_vlr_data, extract_vlr_type
