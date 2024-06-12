@@ -97,29 +97,6 @@ function write_las(io::IO, las::LasDataset, compressed::Bool = false)
 
     user_fields = ismissing(las._user_data) ? () : filter(c -> c != :undocumented_bytes, columnnames(las._user_data))
 
-    # LASzip doesn't support extra bytes :(
-    if compressed && !isempty(user_fields)
-        # need to make copies here so we don't permanently modify the LAS dataset
-        header = deepcopy(get_header(las))
-        vlrs = deepcopy(get_vlrs(las))
-        @warn "Can't compress custom user fields into LAZ! Ignoring user fields and extra bytes VLRs..."
-        user_fields = ()
-        # find indices of existing extra bytes VLRs
-        extra_bytes_idxs = findall(vlr -> (get_user_id(vlr) == LAS_SPEC_USER_ID) && (get_record_id(vlr) == ID_EXTRABYTES), vlrs)
-        if !isempty(extra_bytes_idxs)
-            @assert length(extra_bytes_idxs) == 1 "Found $(length(extra_bytes_idxs)) Extra Bytes VLRs when we should only have 1"
-            extra_bytes_vlr = vlrs[extra_bytes_idxs[1]]
-            # need to adjust the data record length in the header to remove these extra bytes
-            for extra_bytes ∈ get_extra_bytes(get_data(extra_bytes_vlr))
-                header.data_record_length -= sizeof(data_type(extra_bytes))
-            end
-            # make sure we remove the extra bytes vlrs and adjust the header info
-            header.n_vlr -= 1
-            header.data_offset -= sizeof(extra_bytes_vlr)
-            deleteat!(vlrs, extra_bytes_idxs)
-        end
-    end
-
     write(io, header)
 
     for vlr ∈ vlrs
@@ -132,7 +109,7 @@ function write_las(io::IO, las::LasDataset, compressed::Bool = false)
 
     # packing points into a StructVector makes operations where you have to access per-point fields many times like in get_record_bytes below faster
     las_records = StructVector(las_record.(this_point_format, pc, Ref(xyz), undoc_bytes, Ref(user_fields)); unwrap = t -> (t <: LasPoint) || (t <: UserFields))
-    byte_vector = get_record_bytes(las_records)
+    byte_vector = get_record_bytes(las_records, vlrs)
     write(io, byte_vector)
 
     for evlr ∈ get_evlrs(las)
@@ -147,7 +124,7 @@ end
 
 Construct an array of bytes that correctly encodes the information stored in a set of LAS `records` according to the spec
 """
-function get_record_bytes(records::StructVector{TRecord}) where {TRecord <: LasRecord}
+function get_record_bytes(records::StructVector{TRecord}, vlrs::Vector{LasVariableLengthRecord}) where {TRecord <: LasRecord}
     point_format = get_point_format(TRecord)
     point_fields = collect(fieldnames(point_format))
     bytes_per_point_field = sizeof.(fieldtypes(point_format))
@@ -172,16 +149,25 @@ function get_record_bytes(records::StructVector{TRecord}) where {TRecord <: LasR
     end
 
     if user_field_bytes > 0
+        # need to write the extra bytes fields in the same order as they appear in the VLR
+        extra_bytes_vlrs = extract_vlr_type(vlrs, LAS_SPEC_USER_ID, ID_EXTRABYTES)
+        @assert length(extra_bytes_vlrs) == 1 "Expected to find 1 Extra Bytes VLR, instead found $(length(extra_bytes_vlrs))"
+        # get the order they appear in the VLR
+        user_field_names = unique(get_base_field_name.(Symbol.(name.(get_extra_bytes(get_data(extra_bytes_vlrs[1]))))))
+        # create a mapping between the order in the VLR and the order in the record
+        per_record_user_field_names = get_user_field_names(TRecord)
+        user_field_idxs = indexin(user_field_names, collect(per_record_user_field_names))
         user_field_types = get_user_field_types(TRecord)
         bytes_per_user_field = sizeof.(user_field_types)
-        for (i, user_field) ∈ enumerate(get_user_field_names(TRecord))
+        for (i, user_field) ∈ enumerate(user_field_names)
             field_byte_vec = reinterpret(UInt8, getproperty(lazy.user_fields, user_field))
-            if bytes_per_user_field[i] ∉ keys(field_idxs)
-                field_idxs[bytes_per_user_field[i]] = reduce(vcat, map(j -> (0:bytes_per_user_field[i] - 1) .+ j, 1:bytes_per_record:total_num_bytes))
+            idx = user_field_idxs[i]
+            if bytes_per_user_field[idx] ∉ keys(field_idxs)
+                field_idxs[bytes_per_user_field[idx]] = reduce(vcat, map(j -> (0:bytes_per_user_field[idx] - 1) .+ j, 1:bytes_per_record:total_num_bytes))
             end
-            this_field_idxs = field_idxs[bytes_per_user_field[i]] .+ byte_offset
+            this_field_idxs = field_idxs[bytes_per_user_field[idx]] .+ byte_offset
             view(whole_byte_vec, this_field_idxs) .= field_byte_vec
-            byte_offset += bytes_per_user_field[i]
+            byte_offset += bytes_per_user_field[idx]
         end
     end
 
