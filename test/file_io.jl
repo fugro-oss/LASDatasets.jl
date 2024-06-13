@@ -316,6 +316,7 @@ end
         :point_source_id,
         :gps_time,
         :color,
+        :terrainHeight
     ]
 
     @test length(expected_columns) == length(columnnames(pc))
@@ -493,34 +494,24 @@ end
         other_thing = rand(Int, num_points)
     )
     mktempdir() do tmp
-        file_name = joinpath(tmp, "pc.las")
-        save_las(file_name, pc)
-        new_las = load_las(file_name, columnnames(pc))
-        vlrs = get_vlrs(new_las)
-        # 5 Extra Bytes VLRs for "thing" and 2 VLRs for "other_thing"
-        @test length(vlrs) == 6
-        @test all(map(i -> LAS.name(get_data(vlrs[i])) == "thing [$(i - 1)]", 1:5))
-        @test LAS.name(get_data(vlrs[6])) == "other_thing"
-        @test all(LAS.data_type.(get_data.(vlrs[1:5])) .== Float64)
-        @test LAS.data_type(get_data(vlrs[6])) == Int
-        new_pc = get_pointcloud(new_las)
-        for col ∈ columnnames(pc)
-            @test all(isapprox.(getproperty(new_pc, col), getproperty(pc, col); atol = LAS.POINT_SCALE))
+        # do this for regular and compressed las
+        for ext ∈ ["las", "laz"]
+            file_name = joinpath(tmp, "pc.$(ext)")
+            save_las(file_name, pc)
+            new_las = load_las(file_name, columnnames(pc))
+            vlrs = get_vlrs(new_las)
+            # 1 Extra Bytes VLR with 5 entries for "thing" and 1 entry for "other_thing"
+            @test length(vlrs) == 1
+            extra_bytes = LAS.get_extra_bytes(get_data(vlrs[1]))
+            @test length(extra_bytes) == 6
+            @test all(map(i -> LAS.name(extra_bytes[i]) == "thing [$(i - 1)]", 1:5))
+            @test LAS.name(extra_bytes[6]) == "other_thing"
+            @test all(LAS.data_type.(extra_bytes[1:5]) .== Float64)
+            @test LAS.data_type(extra_bytes[6]) == Int
+            new_pc = get_pointcloud(new_las)
+            for col ∈ columnnames(pc)
+                @test all(isapprox.(getproperty(new_pc, col), getproperty(pc, col); atol = LAS.POINT_SCALE))
+            end
         end
-    end
-
-    # LASzip doesn't support writing extra bytes, so make sure we handle this gracefully
-    mktempdir() do tmp
-        file_name = joinpath(tmp, "pc.laz")
-        save_las(file_name, pc)
-        new_las = load_las(file_name, ALL_LAS_COLUMNS)
-        new_pc = get_pointcloud(new_las)
-        @test :my_column ∉ columnnames(new_pc)
-        for col ∈ filter(col -> col ∉ (:thing, :other_thing), columnnames(pc))
-            @assert all(isapprox.(getproperty(new_pc, col), getproperty(pc, col); atol = LAS.POINT_SCALE))
-        end
-        @test isempty(get_vlrs(new_las))
-        @test number_of_vlrs(get_header(new_las)) == 0
-        @test point_record_length(get_header(new_las)) == 20
     end
 end

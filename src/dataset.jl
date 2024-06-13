@@ -74,8 +74,18 @@ mutable struct LasDataset
                 check_user_type(col_type)
 
                 # grab information about the existing ExtraBytes VLRs - need to see if we need to update them or not
-                extra_bytes_vlrs = extract_vlr_type(vlrs, LAS_SPEC_USER_ID, ID_EXTRABYTES)
-                extra_bytes_data = get_data.(extra_bytes_vlrs)
+                extra_bytes_vlr = extract_vlr_type(vlrs, LAS_SPEC_USER_ID, ID_EXTRABYTES)
+                @assert length(extra_bytes_vlr) ≤ 1 "Found multiple Extra Bytes VLRs in LAS file!"
+                if isempty(extra_bytes_vlr)
+                    extra_bytes_vlr = LasVariableLengthRecord(LAS_SPEC_USER_ID, ID_EXTRABYTES, "Extra Bytes", ExtraBytesCollection())
+                    # make sure we add the VLR to our collection and update any header info
+                    push!(vlrs, extra_bytes_vlr)
+                    header.n_vlr += 1
+                    header.data_offset += sizeof(extra_bytes_vlr)
+                else
+                    extra_bytes_vlr = extra_bytes_vlr[1]
+                end
+                extra_bytes_data = get_extra_bytes(get_data(extra_bytes_vlr))
                 user_field_names = Symbol.(name.(extra_bytes_data))
                 user_field_types = data_type.(extra_bytes_data)
 
@@ -95,13 +105,11 @@ mutable struct LasDataset
                         continue
                     elseif !isnothing(matches_name_idx)
                         # if we find one with matching name (not type), we'll need to update the header record length to account for this new type
-                        header.data_record_length -= sizeof(data_type(get_data(vlrs[matches_name_idx])))
+                        header.data_record_length -= sizeof(data_type(extra_bytes_data[matches_name_idx]))
                     end
                     # now make a new ExtraBytes VLR and add it to our dataset, updating the header information as we go
-                    extra_bytes_vlr = construct_extra_bytes_vlr(col_name, eltype(type_to_check))
-                    push!(vlrs, extra_bytes_vlr)
-                    header.n_vlr += 1
-                    header.data_offset += sizeof(extra_bytes_vlr)
+                    add_extra_bytes_to_collection!(get_data(extra_bytes_vlr), col_name, eltype(type_to_check))
+                    header.data_offset += sizeof(ExtraBytes)
                     header.data_record_length += sizeof(type_to_check)
                 end
             end
@@ -287,15 +295,22 @@ function add_column!(las::LasDataset, column::Symbol, values::AbstractVector{T})
     las.header.data_record_length += sizeof(T)
     vlrs = get_vlrs(las)
     extra_bytes_vlrs = extract_vlr_type(vlrs, LAS_SPEC_USER_ID, ID_EXTRABYTES)
-    
+    @assert length(extra_bytes_vlrs) ≤ 1 "Found $(length(extra_bytes_vlrs)) Extra Bytes VLRs when we can only have a max of 1"
+    if isempty(extra_bytes_vlrs)
+        extra_bytes_vlr = LasVariableLengthRecord(LAS_SPEC_USER_ID, ID_EXTRABYTES, "Extra Bytes Records", ExtraBytesCollection())
+        # make sure we add it to the dataset to account for offsets in the header etc.
+        add_vlr!(las, extra_bytes_vlr)
+    else
+        extra_bytes_vlr = extra_bytes_vlrs[1]
+    end
     if T <: SVector
         # user field arrays have to be saved as sequential extra bytes records with names of the form "column [i]" (zero indexing encouraged)
         split_col_name = split_column_name(column, length(T))
         for i ∈ 1:length(T)
-            add_extra_bytes!(las, split_col_name[i], eltype(T), extra_bytes_vlrs)
+            add_extra_bytes!(las, split_col_name[i], eltype(T), extra_bytes_vlr)
         end
     else
-        add_extra_bytes!(las, column, T, extra_bytes_vlrs)
+        add_extra_bytes!(las, column, T, extra_bytes_vlr)
     end
     nothing
 end
@@ -341,24 +356,18 @@ Add an extra bytes VLR to a LAS dataset to document an extra user-field for poin
 * `las` : LAS dataset to add extra bytes to
 * `col_name` : Name to save the user field as
 * `T` : Data type for the user field (must be a base type as specified in the spec or a static vector of one of these types)
-* `extra_bytes_vlr` : Set of existing extra bytes VLRs already present in the LAS dataset
+* `extra_bytes_vlr` : An Extra Bytes Collection VLR that already exists in the dataset
 """
-function add_extra_bytes!(las::LasDataset, col_name::Symbol, ::Type{T}, extra_bytes_vlrs::Vector{LasVariableLengthRecord}) where T
-    matching_extra_bytes_vlr = findfirst(Symbol.(name.(get_data.(extra_bytes_vlrs))) .== col_name)
-    if !isnothing(matching_extra_bytes_vlr)
-        remove_vlr!(las, extra_bytes_vlrs[matching_extra_bytes_vlr])
+function add_extra_bytes!(las::LasDataset, col_name::Symbol, ::Type{T}, extra_bytes_vlr::LasVariableLengthRecord{ExtraBytesCollection}) where T
+    extra_bytes = get_extra_bytes(get_data(extra_bytes_vlr))
+    matching_extra_bytes = findfirst(Symbol.(name.(extra_bytes)) .== col_name)
+    if !isnothing(matching_extra_bytes)
+        deleteat!(extra_bytes, matching_extra_bytes)
+        header = get_header(las)
+        header.data_offset -= (length(matching_extra_bytes) * sizeof(ExtraBytes))
+        @assert header.data_offset > 0 "Inconsistent data configuration! Got data offset of $(header.data_offset) after removing Extra Bytes Record"
     end
-    extra_bytes_vlr = construct_extra_bytes_vlr(col_name, T)
-    add_vlr!(las, extra_bytes_vlr)
-end
-
-"""
-    $(TYPEDSIGNATURES)
-
-Construct an extra bytes VLR with a field name `col_name` and data type `T`
-"""
-function construct_extra_bytes_vlr(col_name::Symbol, ::Type{T}) where T
-    @assert length(String(col_name)) ≤ 32 "Custom column name $(col_name) too long! Must be ≤ 32 Bytes, got $(length(String(col_name))) Bytes"
-    extra_bytes = ExtraBytes(0x00, String(col_name), zero(T), zero(T), zero(T), zero(T), zero(T), "$(col_name)")
-    LasVariableLengthRecord(LAS_SPEC_USER_ID, ID_EXTRABYTES, String(col_name), extra_bytes)
+    add_extra_bytes_to_collection!(get_data(extra_bytes_vlr), col_name, T)
+    header = get_header(las)
+    header.data_offset += sizeof(ExtraBytes)
 end
