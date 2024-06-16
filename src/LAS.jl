@@ -53,7 +53,7 @@ export get_horizontal_unit, get_vertical_unit, get_wkt_string
 export get_classes, get_description, set_description!
 export @register_vlr_type, read_vlr_data, extract_vlr_type
 
-export LasDataset, get_header, get_pointcloud, get_vlrs, get_evlrs, get_user_defined_bytes
+export LasDataset, get_header, get_pointcloud, get_vlrs, get_evlrs, get_user_defined_bytes, get_unit_conversion
 export add_column!, merge_column!, add_vlr!, remove_vlr!, set_superseded!
 
 # I/O methods
