@@ -12,8 +12,6 @@ Saves a pointcloud to LAS or LAZ. The appropriate LAS version and point format i
 * `evlrs` : Collection of Extended Variable Length Records to write to the LAS file, default `LasVariableLengthRecord[]`
 * `user_defined_bytes` : Any user-defined bytes to write in between the VLRs and point records, default `UInt8[]`
 * `scale` : Scaling factor applied to points on writing, default `LAS.POINT_SCALE`
-* `compressed` : Whether or not data is to be written to a compressed .laz file, default false
-
 ---
 $(METHODLIST)
 """
@@ -25,14 +23,14 @@ function save_las(file_name::AbstractString, pointcloud::AbstractVector{<:NamedT
                         kwargs...)
     open_func = get_open_func(file_name)
     open_func(file_name, "w") do io
-        write_las(io, pointcloud, vlrs, evlrs, user_defined_bytes, scale, is_laz(file_name))
+        write_las(io, pointcloud, vlrs, evlrs, user_defined_bytes, scale)
     end
 end
 
 function save_las(file_name::AbstractString, las::LasDataset)
     open_func = get_open_func(file_name)
     open_func(file_name, "w") do io
-        write_las(io, las, is_laz(file_name))
+        write_las(io, las)
     end
 end
 
@@ -45,7 +43,7 @@ function save_las(file_name::AbstractString,
                     scale::Real = POINT_SCALE) where {TRecord <: LasRecord}
     open_func = get_open_func(file_name)
     open_func(file_name, "w") do io
-        write_las(io, header, point_records, vlrs, evlrs, user_defined_bytes, scale, is_laz(file_name))
+        write_las(io, header, point_records, vlrs, evlrs, user_defined_bytes, scale)
     end
 end
 
@@ -53,10 +51,9 @@ function write_las(io::IO, pointcloud::AbstractVector{<:NamedTuple},
                     vlrs::Vector{<:LasVariableLengthRecord} = LasVariableLengthRecord[], 
                     evlrs::Vector{<:LasVariableLengthRecord} = LasVariableLengthRecord[], 
                     user_defined_bytes::Vector{UInt8} = UInt8[],
-                    scale::Real = POINT_SCALE,
-                    compressed::Bool = false)
+                    scale::Real = POINT_SCALE)
     point_format = get_point_format(pointcloud)
-    write_las(io, pointcloud, point_format, vlrs, evlrs, user_defined_bytes, scale, compressed)
+    write_las(io, pointcloud, point_format, vlrs, evlrs, user_defined_bytes, scale)
 end
 
 
@@ -72,25 +69,29 @@ Write a pointcloud and additional VLR's and user-defined bytes to an IO stream i
 * `evlrs` : Collection of Extended Variable Length Records to write to `io`
 * `user_defined_bytes` : Any user-defined bytes to write in between the VLRs and point records
 * `scale` : Scaling factor applied to points on writing
-* `compressed` : Whether or not data is to be written to a compressed .laz file, default false
 """
 function write_las(io::IO, pointcloud::AbstractVector{<:NamedTuple}, 
                     point_format::Type{TPoint},
                     vlrs::Vector{<:LasVariableLengthRecord}, 
                     evlrs::Vector{<:LasVariableLengthRecord}, 
                     user_defined_bytes::Vector{UInt8},
-                    scale::Real,
-                    compressed::Bool = false) where {TPoint}
+                    scale::Real) where {TPoint}
     # automatically construct a header that's consistent with the data and point format we've supplied
     header = make_consistent_header(pointcloud, point_format, vlrs, evlrs, user_defined_bytes, scale)
-    write_las(io, LasDataset(header, pointcloud, vlrs, evlrs, user_defined_bytes), compressed)
+    write_las(io, LasDataset(header, pointcloud, vlrs, evlrs, user_defined_bytes))
 end
 
-function write_las(io::IO, las::LasDataset, compressed::Bool = false)
+function write_las(io::IO, las::LasDataset)
     header = get_header(las)
     vlrs = get_vlrs(las)
     
     pc = get_pointcloud(las)
+
+    # reverse our unit conversion done on ingest so the positions match the header / VLR info
+    if get_unit_conversion(las) != NO_CONVERSION
+        pc.position .= map(p -> p ./ get_unit_conversion(las), pc.position)
+    end
+
 
     this_point_format = point_format(header)
     xyz = spatial_info(header)

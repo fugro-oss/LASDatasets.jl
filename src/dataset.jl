@@ -24,11 +24,15 @@ mutable struct LasDataset
     """Extra user bytes packed between the Header block and the first VLR of the source LAS file"""
     const user_defined_bytes::Vector{UInt8}
 
+    """Unit conversion factors applied to each axis when the dataset is ingested. This is reversed when you save the dataset to keep header/coordinate system information consistent"""
+    const unit_conversion::SVector{3, Float64}
+
     function LasDataset(header::LasHeader,
                         pointcloud::Table,
                         vlrs::Vector{<:LasVariableLengthRecord},
                         evlrs::Vector{<:LasVariableLengthRecord},
-                        user_defined_bytes::Vector{UInt8})
+                        user_defined_bytes::Vector{UInt8},
+                        unit_conversion::SVector{3, Float64})
 
         # do a few checks to make sure everything is consistent between the header and other data
         point_format_from_table = get_point_format(pointcloud)
@@ -49,6 +53,9 @@ mutable struct LasDataset
         num_evlrs = length(evlrs)
         num_evlrs_in_header = number_of_evlrs(header)
         @assert num_evlrs == num_evlrs_in_header "Number of EVLR's in header $(num_evlrs_in_header) doesn't match number of EVLR's supplied $(num_evlrs)"
+
+        # make sure our unit conversions are non-zero to avoid NaN's
+        @assert all(unit_conversion .> 0) "Unit conversion factors must be non-zero! Got $(unit_conversion)"
 
         # if points don't have an ID column assigned to them, add it in
         if :id ∉ columnnames(pointcloud)
@@ -114,7 +121,7 @@ mutable struct LasDataset
                 end
             end
         end
-        return new(header, las_pc, user_pc, Vector{LasVariableLengthRecord}(vlrs), Vector{LasVariableLengthRecord}(evlrs), user_defined_bytes)
+        return new(header, las_pc, user_pc, Vector{LasVariableLengthRecord}(vlrs), Vector{LasVariableLengthRecord}(evlrs), user_defined_bytes, unit_conversion)
     end
 end
 
@@ -159,6 +166,13 @@ get_evlrs(las::LasDataset) = las.evlrs
 Extract the set of user-defined bytes from a `LasDataset` `las`
 """
 get_user_defined_bytes(las::LasDataset) = las.user_defined_bytes
+
+"""
+    $(TYPEDSIGNATURES)
+
+Get the unit factor conversion that was applied to this dataset when ingested
+"""
+get_unit_conversion(las::LasDataset) = las.unit_conversion
 
 function Base.show(io::IO, las::LasDataset)
     println(io, "LAS Dataset")
