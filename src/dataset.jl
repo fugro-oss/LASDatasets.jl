@@ -32,7 +32,7 @@ mutable struct LasDataset
                         vlrs::Vector{<:LasVariableLengthRecord},
                         evlrs::Vector{<:LasVariableLengthRecord},
                         user_defined_bytes::Vector{UInt8},
-                        unit_conversion::SVector{3, Float64})
+                        unit_conversion::SVector{3, Float64} = NO_CONVERSION)
 
         # do a few checks to make sure everything is consistent between the header and other data
         point_format_from_table = get_point_format(pointcloud)

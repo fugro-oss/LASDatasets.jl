@@ -119,8 +119,10 @@ function read_las_data(io::TIO, required_columns::TTuple=DEFAULT_LAS_COLUMNS;
     
     as_table = make_table(records, required_columns, xyz)
 
-    if convert_to_metres
-        conversion = convert_units!(as_table, vlrs, convert_x_y_units, convert_z_units)
+    conversion = if convert_to_metres
+        convert_units!(as_table, vlrs, convert_x_y_units, convert_z_units)
+    else
+        NO_CONVERSION
     end
 
     evlrs = Vector{LasVariableLengthRecord}(map(_ -> read(io, LasVariableLengthRecord, true), 1:number_of_evlrs(header)))
@@ -269,8 +271,10 @@ function convert_units!(pointcloud::AbstractVector{<:NamedTuple}, vlrs::Vector{L
             if !ismissing(conversion) && any(conversion .!= 1.0)
                 @info "Positions converted to meters using conversion $(conversion)"
                 pointcloud = pointcloud.position .= map(p -> p .* conversion, pointcloud.position)
+                return conversion
+            else
+                return NO_CONVERSION
             end
-            return conversion
         end
     end
     return NO_CONVERSION
