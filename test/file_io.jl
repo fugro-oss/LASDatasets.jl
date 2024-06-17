@@ -382,7 +382,6 @@ end
     )
 
     tmpdir = mktempdir()
-    # tmpdir = "/home/msb/git/FugroLAS.jl/test_folder"
     output_file_path = joinpath(tmpdir, "test_las_write_laspoint6.las")
 
     wkt_str = """GEOGCS["GCS_WGS_1984",DATUM["D_WGS_1984",SPHEROID["WGS_1984",6378137,298.257223563]],PRIMEM["Greenwich",0],UNIT["Degree",0.017453292519943295]]"""
@@ -513,5 +512,18 @@ end
                 @test all(isapprox.(getproperty(new_pc, col), getproperty(pc, col); atol = LAS.POINT_SCALE))
             end
         end
+    end
+end
+
+@testset "Unit Conversion" begin
+    ogc_ft_file = joinpath(@__DIR__, "test_files/ogc_ft.las")
+    las = load_las(ogc_ft_file; convert_to_metres = true)
+    # make sure we get the write unit conversion - should be all feet
+    @test get_unit_conversion(las) == SVector{3, Float64}(0.304800609601219, 0.304800609601219, 0.304800609601219)
+    mktempdir() do tmp
+        # make sure that when we read a LAS file, do a unit conversion then write it again, we get the same dataset back
+        out_file = joinpath(tmp, "pc.las")
+        save_las(out_file, las)
+        @test load_las(ogc_ft_file, [:position]; convert_to_metres = false) == load_las(out_file, [:position]; convert_to_metres = false)
     end
 end

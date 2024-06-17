@@ -18,6 +18,8 @@ const UNIT_CONVERSION = Dict{String, Float64}(  "us-in" => 0.0254000508,
                                                 "cm" => 100.0, 
                                                 "mm" => 1000.0)
 
+const NO_CONVERSION = SVector{3, Float64}(1.0, 1.0, 1.0)
+
 const LAS_SPEC_USER_ID = "LASF_Spec"
 const LAS_PROJ_USER_ID = "LASF_Projection"
 const ID_GEOKEYDIRECTORYTAG = UInt16(34735)

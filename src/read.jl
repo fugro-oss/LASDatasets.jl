@@ -119,13 +119,15 @@ function read_las_data(io::TIO, required_columns::TTuple=DEFAULT_LAS_COLUMNS;
     
     as_table = make_table(records, required_columns, xyz)
 
-    if convert_to_metres
+    conversion = if convert_to_metres
         convert_units!(as_table, vlrs, convert_x_y_units, convert_z_units)
+    else
+        NO_CONVERSION
     end
 
     evlrs = Vector{LasVariableLengthRecord}(map(_ -> read(io, LasVariableLengthRecord, true), 1:number_of_evlrs(header)))
 
-    LasDataset(header, as_table, vlrs, evlrs, user_defined_bytes)
+    LasDataset(header, as_table, vlrs, evlrs, user_defined_bytes, conversion)
 end
 
 """
@@ -261,7 +263,7 @@ function convert_units!(pointcloud::AbstractVector{<:NamedTuple}, vlrs::Vector{L
         these_are_wkts = is_ogc_wkt_record.(vlrs)
         # we are not requesting unit conversion and there is no OGC WKT VLR
         if ismissing(convert_x_y_units) && ismissing(convert_z_units) && count(these_are_wkts) == 0
-            return nothing
+            return NO_CONVERSION
         else 
             @assert count(these_are_wkts) == 1 "Expected to find 1 OGC WKT VLR, instead found $(count(these_are_wkts))"
             ogc_wkt = get_data(vlrs[findfirst(these_are_wkts)])
@@ -269,9 +271,13 @@ function convert_units!(pointcloud::AbstractVector{<:NamedTuple}, vlrs::Vector{L
             if !ismissing(conversion) && any(conversion .!= 1.0)
                 @info "Positions converted to meters using conversion $(conversion)"
                 pointcloud = pointcloud.position .= map(p -> p .* conversion, pointcloud.position)
+                return conversion
+            else
+                return NO_CONVERSION
             end
         end
     end
+    return NO_CONVERSION
 end
 
 """
