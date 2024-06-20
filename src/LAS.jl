@@ -7,6 +7,7 @@ using Dates
 using DocStringExtensions
 using FileIO
 using FixedPointNumbers
+using LAStools_jll
 using PackedReadWrite
 import Pkg.Types: read_project
 using Printf

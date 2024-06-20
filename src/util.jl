@@ -38,18 +38,6 @@ upcast_to_8_byte(x::TData) where {TData <: AbstractFloat} = Float64(x)
 # skip the LAS file's magic four bytes, "LASF"
 skiplasf(s::Union{Stream{format"LAS"}, Stream{format"LAZ"}, IO}) = readstring(s, 4)
 
-function get_laszip_executable_path()
-    if Sys.iswindows()
-        return joinpath(dirname(@__DIR__), "resources", "laszip.exe")
-    elseif Sys.islinux()
-        return joinpath(dirname(@__DIR__), "resources", "laszip")
-    else
-        error("Windows and linux only!")
-    end
-end
-
-chmod(get_laszip_executable_path(), 0o777)
-
 function open_las(func::Function, file::String, rw::String = "r")
     @assert rw == "r" || rw == "w" "IO flags must be read (r) or write (w)"
     wrapper = rw == "r" ? BufferedInputStream : BufferedOutputStream
@@ -68,8 +56,8 @@ function open_laz(func::Function, file::String, rw::String = "r")
 
     if (rw=="r")
 
-        # we'll unzip so the user can read as LAS:
-        run(`$(get_laszip_executable_path()) -i $(file) -o $(las_file)`)
+        run(`$(laszip()) -i $(file) -o $(las_file)`)
+
         io = BufferedInputStream(open(las_file, rw))
 
         try
@@ -94,7 +82,7 @@ function open_laz(func::Function, file::String, rw::String = "r")
             
             if (success)
                 mkpath(dirname(file))
-                run(`$(get_laszip_executable_path()) -i $(las_file) -o $(file)`)
+                run(`$(laszip()) -i $(las_file) -o $(file)`)
             end
 
             rm(las_file, force=true)
