@@ -13,24 +13,24 @@
     )
 
     # should error if our point format in the point cloud is incompatible with the one in the header
-    @test_throws AssertionError LasDataset(header, pc, LasVariableLengthRecord[], LasVariableLengthRecord[], UInt8[])
+    @test_throws AssertionError LASDataset(header, pc, LasVariableLengthRecord[], LasVariableLengthRecord[], UInt8[])
     set_point_format!(header, 1)
     set_point_record_length!(header, LASDatasets.byte_size(LasPoint1))
 
     # number of points needs to match
     set_point_record_count!(header, num_points + 1)
-    @test_throws AssertionError LasDataset(header, pc, LasVariableLengthRecord[], LasVariableLengthRecord[], UInt8[])
+    @test_throws AssertionError LASDataset(header, pc, LasVariableLengthRecord[], LasVariableLengthRecord[], UInt8[])
     set_point_record_count!(header, num_points)
 
     # same for number of VLRs/EVLRs
     set_num_vlr!(header, 1)
-    @test_throws AssertionError LasDataset(header, pc, LasVariableLengthRecord[], LasVariableLengthRecord[], UInt8[])
+    @test_throws AssertionError LASDataset(header, pc, LasVariableLengthRecord[], LasVariableLengthRecord[], UInt8[])
     set_num_vlr!(header, 0)
     set_num_evlr!(header, 1)
-    @test_throws AssertionError LasDataset(header, pc, LasVariableLengthRecord[], LasVariableLengthRecord[], UInt8[])
+    @test_throws AssertionError LASDataset(header, pc, LasVariableLengthRecord[], LasVariableLengthRecord[], UInt8[])
     set_num_evlr!(header, 0)
 
-    las = LasDataset(header, pc, LasVariableLengthRecord[], LasVariableLengthRecord[], UInt8[])
+    las = LASDataset(header, pc, LasVariableLengthRecord[], LasVariableLengthRecord[], UInt8[])
     this_pc = get_pointcloud(las)
     @test length(this_pc) == num_points
     # check we add an ID column to the pointcloud
@@ -42,12 +42,12 @@
     @test this_header == header
 
     # check equality if we create two of the same dataset
-    other_las = LasDataset(deepcopy(header), deepcopy(pc), LasVariableLengthRecord[], LasVariableLengthRecord[], UInt8[])
+    other_las = LASDataset(deepcopy(header), deepcopy(pc), LasVariableLengthRecord[], LasVariableLengthRecord[], UInt8[])
     @test other_las == las
     
     # now try incorporating some user fields
     spicy_pc = Table(pc, thing = rand(num_points), other_thing = rand(Int16, num_points))
-    las = LasDataset(header, spicy_pc, LasVariableLengthRecord[], LasVariableLengthRecord[], UInt8[])
+    las = LASDataset(header, spicy_pc, LasVariableLengthRecord[], LasVariableLengthRecord[], UInt8[])
     # make sure our record length reflects the user fields
     this_header = get_header(las)
     @test point_record_length(this_header) == LASDatasets.byte_size(LasPoint1) + 10

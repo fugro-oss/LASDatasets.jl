@@ -127,7 +127,7 @@ function read_las_data(io::TIO, required_columns::TTuple=DEFAULT_LAS_COLUMNS;
 
     evlrs = Vector{LasVariableLengthRecord}(map(_ -> read(io, LasVariableLengthRecord, true), 1:number_of_evlrs(header)))
 
-    LasDataset(header, as_table, vlrs, evlrs, user_defined_bytes, conversion)
+    LASDataset(header, as_table, vlrs, evlrs, user_defined_bytes, conversion)
 end
 
 """

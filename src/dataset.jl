@@ -5,7 +5,7 @@ A wrapper around a LAS dataset. Contains point cloud data in tabular format as w
 
 $(TYPEDFIELDS)
 """
-mutable struct LasDataset
+mutable struct LASDataset
     """The header from the LAS file the points were extracted from"""
     const header::LasHeader
     
@@ -27,7 +27,7 @@ mutable struct LasDataset
     """Unit conversion factors applied to each axis when the dataset is ingested. This is reversed when you save the dataset to keep header/coordinate system information consistent"""
     const unit_conversion::SVector{3, Float64}
 
-    function LasDataset(header::LasHeader,
+    function LASDataset(header::LasHeader,
                         pointcloud::Table,
                         vlrs::Vector{<:LasVariableLengthRecord},
                         evlrs::Vector{<:LasVariableLengthRecord},
@@ -129,9 +129,9 @@ end
 """
     $(TYPEDSIGNATURES)
 
-Extract point cloud data as a Table from a `LasDataset` `las`
+Extract point cloud data as a Table from a `LASDataset` `las`
 """
-function get_pointcloud(las::LasDataset)
+function get_pointcloud(las::LASDataset)
     if ismissing(las._user_data)
         return las.pointcloud
     else
@@ -142,39 +142,39 @@ end
 """
     $(TYPEDSIGNATURES)
 
-Extract the header information from a `LasDataset` `las`
+Extract the header information from a `LASDataset` `las`
 """
-get_header(las::LasDataset) = las.header
+get_header(las::LASDataset) = las.header
 
 """
     $(TYPEDSIGNATURES)
 
-Extract the set of Variable Length Records from a `LasDataset` `las`
+Extract the set of Variable Length Records from a `LASDataset` `las`
 """
-get_vlrs(las::LasDataset) = las.vlrs
+get_vlrs(las::LASDataset) = las.vlrs
 
 """
     $(TYPEDSIGNATURES)
 
-Extract the set of Extended Variable Length Records from a `LasDataset` `las`
+Extract the set of Extended Variable Length Records from a `LASDataset` `las`
 """
-get_evlrs(las::LasDataset) = las.evlrs
+get_evlrs(las::LASDataset) = las.evlrs
 
 """
     $(TYPEDSIGNATURES)
 
-Extract the set of user-defined bytes from a `LasDataset` `las`
+Extract the set of user-defined bytes from a `LASDataset` `las`
 """
-get_user_defined_bytes(las::LasDataset) = las.user_defined_bytes
+get_user_defined_bytes(las::LASDataset) = las.user_defined_bytes
 
 """
     $(TYPEDSIGNATURES)
 
 Get the unit factor conversion that was applied to this dataset when ingested
 """
-get_unit_conversion(las::LasDataset) = las.unit_conversion
+get_unit_conversion(las::LASDataset) = las.unit_conversion
 
-function Base.show(io::IO, las::LasDataset)
+function Base.show(io::IO, las::LASDataset)
     println(io, "LAS Dataset")
     println(io, "\tNum Points: $(length(get_pointcloud(las)))")
     println(io, "\tPoint Format: $(point_format(get_header(las)))")
@@ -187,7 +187,7 @@ function Base.show(io::IO, las::LasDataset)
     println(io, "\tUser Bytes: $(length(get_user_defined_bytes(las)))")
 end
 
-function Base.:(==)(lasA::LasDataset, lasB::LasDataset)
+function Base.:(==)(lasA::LASDataset, lasB::LASDataset)
     # need to individually check that the header, point cloud, (E)VLRs and user bytes are all the same
     headers_equal = get_header(lasA) == get_header(lasB)
     pcA = get_pointcloud(lasA)
@@ -226,7 +226,7 @@ end
 Add a `vlr` into the set of VLRs in a LAS dataset `las`.
 Note that this will modify the header content of `las`, including updating its LAS version to v1.4 if `vlr` is extended
 """
-function add_vlr!(las::LasDataset, vlr::LasVariableLengthRecord)
+function add_vlr!(las::LASDataset, vlr::LasVariableLengthRecord)
     if is_extended(vlr) && isempty(get_evlrs(las))
         # evlrs only supported in LAS 1.4
         set_las_version!(get_header(las), v"1.4")
@@ -255,7 +255,7 @@ end
 Remove a `vlr` from set of VLRs in a LAS dataset `las`.
 Note that this will modify the header content of `las`
 """
-function remove_vlr!(las::LasDataset, vlr::LasVariableLengthRecord)
+function remove_vlr!(las::LASDataset, vlr::LasVariableLengthRecord)
     header = get_header(las)
     if is_extended(vlr)
         set_num_evlr!(header, number_of_evlrs(header) - 1)
@@ -282,7 +282,7 @@ end
 
 Mark a VLR `vlr` as superseded in a dataset `las`
 """
-function set_superseded!(las::LasDataset, vlr::LasVariableLengthRecord)
+function set_superseded!(las::LASDataset, vlr::LasVariableLengthRecord)
     vlrs = is_extended(vlr) ? get_evlrs(las) : get_vlrs(las)
     matching_idx = findfirst(vlrs .== Ref(vlr))
     @assert !isnothing(matching_idx) "Couldn't find VLR in LAS"
@@ -294,7 +294,7 @@ end
 
 Add a column with name `column` and set of `values` to a `las` dataset
 """
-function add_column!(las::LasDataset, column::Symbol, values::AbstractVector{T}) where T
+function add_column!(las::LASDataset, column::Symbol, values::AbstractVector{T}) where T
     @assert length(values) == length(las.pointcloud) "Column size $(length(values)) inconsistent with number of points $(length(las.pointcloud))"
     check_user_type(T)
     if ismissing(las._user_data)
@@ -334,7 +334,7 @@ end
 
 Merge a column with name `column` and a set of `values` into a `las` dataset
 """
-function merge_column!(las::LasDataset, column::Symbol, values::AbstractVector)
+function merge_column!(las::LASDataset, column::Symbol, values::AbstractVector)
     @assert length(values) == length(las.pointcloud) "Column size $(length(values)) inconsistent with number of points $(length(las.pointcloud))"
     if column ∈ columnnames(las.pointcloud)
         getproperty(las.pointcloud, column) .= values
@@ -372,7 +372,7 @@ Add an extra bytes VLR to a LAS dataset to document an extra user-field for poin
 * `T` : Data type for the user field (must be a base type as specified in the spec or a static vector of one of these types)
 * `extra_bytes_vlr` : An Extra Bytes Collection VLR that already exists in the dataset
 """
-function add_extra_bytes!(las::LasDataset, col_name::Symbol, ::Type{T}, extra_bytes_vlr::LasVariableLengthRecord{ExtraBytesCollection}) where T
+function add_extra_bytes!(las::LASDataset, col_name::Symbol, ::Type{T}, extra_bytes_vlr::LasVariableLengthRecord{ExtraBytesCollection}) where T
     extra_bytes = get_extra_bytes(get_data(extra_bytes_vlr))
     matching_extra_bytes = findfirst(Symbol.(name.(extra_bytes)) .== col_name)
     if !isnothing(matching_extra_bytes)

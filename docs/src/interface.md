@@ -4,19 +4,19 @@
 
 ## *LAS* Datasets
 
-A `LasDataset` is a wrapper around data from a *LAS* file that acts as an interface to read, write and modify your *LAS* data. In general, a *LAS* file will have the following contents:
+A `LASDataset` is a wrapper around data from a *LAS* file that acts as an interface to read, write and modify your *LAS* data. In general, a *LAS* file will have the following contents:
 * File Header: contains metadata about the file contents and byte layout
 * *VLRs*: Variable length records of data that appear before the point records
 * User-defined bytes: Additional bytes included after the last *VLR* and before the first point record
 * *LAS* point records: data assigned to each point in the point cloud (following a specific format specified in the header)
 * *EVLRs* : Extended *VLRs* that come after the point records (allows larger data payloads)
 
-These are contained in a `LasDataset` as follows
+These are contained in a `LASDataset` as follows
 ```@docs; canonical = false
-LasDataset
+LASDataset
 ```
 
-You can query the contents of your `LasDataset` by using the following functions:
+You can query the contents of your `LASDataset` by using the following functions:
 ```@docs; canonical = false
 get_header
 get_pointcloud
@@ -26,7 +26,7 @@ get_user_defined_bytes
 ```
 
 ## Reading
-To read the entire contents of a *LAS* or *LAZ* file, you can use the `load_las` function. This returns a `LasDataset` with all the properties listed above. You also have the option of only loading certain point fields.
+To read the entire contents of a *LAS* or *LAZ* file, you can use the `load_las` function. This returns a `LASDataset` with all the properties listed above. You also have the option of only loading certain point fields.
 
 ```julia
 # read the full dataset
@@ -54,7 +54,7 @@ load_vlrs
 ```
 
 ## Writing
-You can write the contents of your `LasDataset` to a file by using the `save_las` function. Note that this takes either a `LasDataset` on its own or a tabular point cloud with *(E)VLRs* and user-defined bytes supplied separately.
+You can write the contents of your `LASDataset` to a file by using the `save_las` function. Note that this takes either a `LASDataset` on its own or a tabular point cloud with *(E)VLRs* and user-defined bytes supplied separately.
 
 ```@docs; canonical = false
 save_las
@@ -74,10 +74,10 @@ pc = Table(position = rand(SVector{3, Float64}, 10), classification = rand(UIn8,
 save_las("my_las.las", pc)
 ```
 
-Note that when you supply just the point cloud outside of a `LasDataset`, *LASDatasets.jl* will automatically construct the appropriate header for you so you don't need to worry about the specifics of appropriate point formats etc. 
+Note that when you supply just the point cloud outside of a `LASDataset`, *LASDatasets.jl* will automatically construct the appropriate header for you so you don't need to worry about the specifics of appropriate point formats etc. 
 
 ## Modifying LAS Contents
-You can modify point fields in your `LasDataset` by adding new columns or merging in values from an existing vector.
+You can modify point fields in your `LASDataset` by adding new columns or merging in values from an existing vector.
 
 ```@docs; canonical = false
 add_column!

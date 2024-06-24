@@ -2,7 +2,7 @@
 
 ## Data Consistency
 
-When creating a `LasDataset` or writing a tabular point cloud out to a file, we need to make sure that the header information we provide is consistent with that of the point cloud and any *VLRs* and user bytes. Internally, this is done using the function `make_consistent_header!`, which compares a `LasHeader` and some *LAS* data and makes sure the header has the appropriate data offsets, flags and other metadata. This will, for example, make sure that the numbers of points, *VLRs* and *EVLRs* are consistent with the data we've provided, so your `LasDataset` is guaranteed to be consistent.
+When creating a `LASDataset` or writing a tabular point cloud out to a file, we need to make sure that the header information we provide is consistent with that of the point cloud and any *VLRs* and user bytes. Internally, this is done using the function `make_consistent_header!`, which compares a `LasHeader` and some *LAS* data and makes sure the header has the appropriate data offsets, flags and other metadata. This will, for example, make sure that the numbers of points, *VLRs* and *EVLRs* are consistent with the data we've provided, so your `LASDataset` is guaranteed to be consistent.
 
 ```@docs; canonical = false
 LASDatasets.make_consistent_header!
