@@ -1,4 +1,4 @@
-module LAS
+module LasDatasets
 
 using ArchGDAL: importWKT, toPROJ4
 using BufferedStreams
@@ -63,4 +63,4 @@ export load_las, load_pointcloud, save_las, load_header, load_vlrs
 # constants
 export DEFAULT_LAS_COLUMNS, ALL_LAS_COLUMNS
 
-end # module LAS
+end # module LasDatasets

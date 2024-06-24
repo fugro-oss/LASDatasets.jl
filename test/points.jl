@@ -1,31 +1,31 @@
 @testset "Points" begin
     # check our versions are correct
-    @test LAS.lasversion_for_point(LasPoint0) == v"1.1"
-    @test LAS.lasversion_for_point(LasPoint1) == v"1.1"
-    @test LAS.lasversion_for_point(LasPoint2) == v"1.2"
-    @test LAS.lasversion_for_point(LasPoint3) == v"1.2"
-    @test LAS.lasversion_for_point(LasPoint4) == v"1.3"
-    @test LAS.lasversion_for_point(LasPoint5) == v"1.3"
-    @test LAS.lasversion_for_point(LasPoint6) == v"1.4"
-    @test LAS.lasversion_for_point(LasPoint7) == v"1.4"
-    @test LAS.lasversion_for_point(LasPoint8) == v"1.4"
-    @test LAS.lasversion_for_point(LasPoint9) == v"1.4"
-    @test LAS.lasversion_for_point(LasPoint10) == v"1.4"
+    @test LasDatasets.lasversion_for_point(LasPoint0) == v"1.1"
+    @test LasDatasets.lasversion_for_point(LasPoint1) == v"1.1"
+    @test LasDatasets.lasversion_for_point(LasPoint2) == v"1.2"
+    @test LasDatasets.lasversion_for_point(LasPoint3) == v"1.2"
+    @test LasDatasets.lasversion_for_point(LasPoint4) == v"1.3"
+    @test LasDatasets.lasversion_for_point(LasPoint5) == v"1.3"
+    @test LasDatasets.lasversion_for_point(LasPoint6) == v"1.4"
+    @test LasDatasets.lasversion_for_point(LasPoint7) == v"1.4"
+    @test LasDatasets.lasversion_for_point(LasPoint8) == v"1.4"
+    @test LasDatasets.lasversion_for_point(LasPoint9) == v"1.4"
+    @test LasDatasets.lasversion_for_point(LasPoint10) == v"1.4"
 
     # make sure we have the right number of bytes
-    @test LAS.byte_size(LasPoint0) == 20
-    @test LAS.byte_size(LasPoint1) == 28
-    @test LAS.byte_size(LasPoint2) == 26
-    @test LAS.byte_size(LasPoint3) == 34
-    @test LAS.byte_size(LasPoint4) == 57
-    @test LAS.byte_size(LasPoint5) == 63
-    @test LAS.byte_size(LasPoint6) == 30
-    @test LAS.byte_size(LasPoint7) == 36
-    @test LAS.byte_size(LasPoint8) == 38
-    @test LAS.byte_size(LasPoint9) == 59
-    @test LAS.byte_size(LasPoint10) == 67
+    @test LasDatasets.byte_size(LasPoint0) == 20
+    @test LasDatasets.byte_size(LasPoint1) == 28
+    @test LasDatasets.byte_size(LasPoint2) == 26
+    @test LasDatasets.byte_size(LasPoint3) == 34
+    @test LasDatasets.byte_size(LasPoint4) == 57
+    @test LasDatasets.byte_size(LasPoint5) == 63
+    @test LasDatasets.byte_size(LasPoint6) == 30
+    @test LasDatasets.byte_size(LasPoint7) == 36
+    @test LasDatasets.byte_size(LasPoint8) == 38
+    @test LasDatasets.byte_size(LasPoint9) == 59
+    @test LasDatasets.byte_size(LasPoint10) == 67
 
-    xyz = LAS.get_spatial_info([SVector{3, Float64}(0, 0, 0), SVector{3, Float64}(1, 1, 1)])
+    xyz = LasDatasets.get_spatial_info([SVector{3, Float64}(0, 0, 0), SVector{3, Float64}(1, 1, 1)])
 
     p0_nt = (;
         position = SVector{3, Float64}(1.0, 2.0, 3.0), 
@@ -42,10 +42,10 @@
         user_data = 1,
         point_source_id = 1
     )
-    p = LAS.laspoint(LasPoint0, p0_nt, xyz)
-    @test p.x == 1.0/LAS.POINT_SCALE
-    @test p.y == 2.0/LAS.POINT_SCALE
-    @test p.z == 3.0/LAS.POINT_SCALE
+    p = LasDatasets.laspoint(LasPoint0, p0_nt, xyz)
+    @test p.x == 1.0/LasDatasets.POINT_SCALE
+    @test p.y == 2.0/LasDatasets.POINT_SCALE
+    @test p.z == 3.0/LasDatasets.POINT_SCALE
     @test p.intensity == 0x8080
     @test p.flag_byte == 0x11
     @test p.raw_classification == 0x41
@@ -69,10 +69,10 @@
         point_source_id = 1,
         gps_time = 2.5
     )
-    p = LAS.laspoint(LasPoint1, p1_nt, xyz)
-    @test p.x == 1.0/LAS.POINT_SCALE
-    @test p.y == 2.0/LAS.POINT_SCALE
-    @test p.z == 3.0/LAS.POINT_SCALE
+    p = LasDatasets.laspoint(LasPoint1, p1_nt, xyz)
+    @test p.x == 1.0/LasDatasets.POINT_SCALE
+    @test p.y == 2.0/LasDatasets.POINT_SCALE
+    @test p.z == 3.0/LasDatasets.POINT_SCALE
     @test p.intensity == 0x8080
     @test p.flag_byte == 0x6d
     @test p.raw_classification == 0xa3
@@ -97,10 +97,10 @@
         point_source_id = 1,
         color = RGB(1, 0, 0.5)
     )
-    p = LAS.laspoint(LasPoint2, p2_nt, xyz)
-    @test p.x == 1.0/LAS.POINT_SCALE
-    @test p.y == 2.0/LAS.POINT_SCALE
-    @test p.z == 3.0/LAS.POINT_SCALE
+    p = LasDatasets.laspoint(LasPoint2, p2_nt, xyz)
+    @test p.x == 1.0/LasDatasets.POINT_SCALE
+    @test p.y == 2.0/LasDatasets.POINT_SCALE
+    @test p.z == 3.0/LasDatasets.POINT_SCALE
     @test p.intensity == 0x8080
     @test p.flag_byte == 0x6d
     @test p.raw_classification == 0xa3
@@ -128,10 +128,10 @@
         gps_time = 2.5,
         color = RGB(1, 0, 0.5)
     )
-    p = LAS.laspoint(LasPoint3, p3_nt, xyz)
-    @test p.x == 1.0/LAS.POINT_SCALE
-    @test p.y == 2.0/LAS.POINT_SCALE
-    @test p.z == 3.0/LAS.POINT_SCALE
+    p = LasDatasets.laspoint(LasPoint3, p3_nt, xyz)
+    @test p.x == 1.0/LasDatasets.POINT_SCALE
+    @test p.y == 2.0/LasDatasets.POINT_SCALE
+    @test p.z == 3.0/LasDatasets.POINT_SCALE
     @test p.intensity == 0x8080
     @test p.flag_byte == 0x6d
     @test p.raw_classification == 0xa3
@@ -160,10 +160,10 @@
         point_source_id = 1,
         gps_time = 2.5
     )
-    p = LAS.laspoint(LasPoint4, p4_nt, xyz)
-    @test p.x == 1.0/LAS.POINT_SCALE
-    @test p.y == 2.0/LAS.POINT_SCALE
-    @test p.z == 3.0/LAS.POINT_SCALE
+    p = LasDatasets.laspoint(LasPoint4, p4_nt, xyz)
+    @test p.x == 1.0/LasDatasets.POINT_SCALE
+    @test p.y == 2.0/LasDatasets.POINT_SCALE
+    @test p.z == 3.0/LasDatasets.POINT_SCALE
     @test p.intensity == 0x8080
     @test p.flag_byte == 0x6d
     @test p.raw_classification == 0xa3
@@ -196,10 +196,10 @@
         gps_time = 2.5,
         color = RGB(1, 0, 0.5)
     )
-    p = LAS.laspoint(LasPoint5, p5_nt, xyz)
-    @test p.x == 1.0/LAS.POINT_SCALE
-    @test p.y == 2.0/LAS.POINT_SCALE
-    @test p.z == 3.0/LAS.POINT_SCALE
+    p = LasDatasets.laspoint(LasPoint5, p5_nt, xyz)
+    @test p.x == 1.0/LasDatasets.POINT_SCALE
+    @test p.y == 2.0/LasDatasets.POINT_SCALE
+    @test p.z == 3.0/LasDatasets.POINT_SCALE
     @test p.intensity == 0x8080
     @test p.flag_byte == 0x6d
     @test p.raw_classification == 0xa3
@@ -236,10 +236,10 @@
         point_source_id = 4,
         gps_time = 2.5
     )
-    p = LAS.laspoint(LasPoint6, p6_nt, xyz)
-    @test p.x == 1.0/LAS.POINT_SCALE
-    @test p.y == 2.0/LAS.POINT_SCALE
-    @test p.z == 3.0/LAS.POINT_SCALE
+    p = LasDatasets.laspoint(LasPoint6, p6_nt, xyz)
+    @test p.x == 1.0/LasDatasets.POINT_SCALE
+    @test p.y == 2.0/LasDatasets.POINT_SCALE
+    @test p.z == 3.0/LasDatasets.POINT_SCALE
     @test p.intensity == 0x8080
     @test p.flag_byte_1 == 0xfa
     @test p.flag_byte_2 == 0x5a
@@ -268,10 +268,10 @@
         gps_time = 2.5,
         color = RGB(0.1, 0.2, 0.6)
     )
-    p = LAS.laspoint(LasPoint7, p7_nt, xyz)
-    @test p.x == 1.0/LAS.POINT_SCALE
-    @test p.y == 2.0/LAS.POINT_SCALE
-    @test p.z == 3.0/LAS.POINT_SCALE
+    p = LasDatasets.laspoint(LasPoint7, p7_nt, xyz)
+    @test p.x == 1.0/LasDatasets.POINT_SCALE
+    @test p.y == 2.0/LasDatasets.POINT_SCALE
+    @test p.z == 3.0/LasDatasets.POINT_SCALE
     @test p.intensity == 0x8080
     @test p.flag_byte_1 == 0xfa
     @test p.flag_byte_2 == 0x5a
@@ -304,10 +304,10 @@
         color = RGB(0.1, 0.2, 0.6),
         nir = N0f8(0.8)
     )
-    p = LAS.laspoint(LasPoint8, p8_nt, xyz)
-    @test p.x == 1.0/LAS.POINT_SCALE
-    @test p.y == 2.0/LAS.POINT_SCALE
-    @test p.z == 3.0/LAS.POINT_SCALE
+    p = LasDatasets.laspoint(LasPoint8, p8_nt, xyz)
+    @test p.x == 1.0/LasDatasets.POINT_SCALE
+    @test p.y == 2.0/LasDatasets.POINT_SCALE
+    @test p.z == 3.0/LasDatasets.POINT_SCALE
     @test p.intensity == 0x8080
     @test p.flag_byte_1 == 0xfa
     @test p.flag_byte_2 == 0x5a
@@ -339,10 +339,10 @@
         point_source_id = 4,
         gps_time = 2.5
     )
-    p = LAS.laspoint(LasPoint9, p9_nt, xyz)
-    @test p.x == 1.0/LAS.POINT_SCALE
-    @test p.y == 2.0/LAS.POINT_SCALE
-    @test p.z == 3.0/LAS.POINT_SCALE
+    p = LasDatasets.laspoint(LasPoint9, p9_nt, xyz)
+    @test p.x == 1.0/LasDatasets.POINT_SCALE
+    @test p.y == 2.0/LasDatasets.POINT_SCALE
+    @test p.z == 3.0/LasDatasets.POINT_SCALE
     @test p.intensity == 0x8080
     @test p.flag_byte_1 == 0xfa
     @test p.flag_byte_2 == 0x5a
@@ -379,10 +379,10 @@
         color = RGB(0.1, 0.2, 0.6),
         nir = N0f8(0.8)
     )
-    p = LAS.laspoint(LasPoint10, p10_nt, xyz)
-    @test p.x == 1.0/LAS.POINT_SCALE
-    @test p.y == 2.0/LAS.POINT_SCALE
-    @test p.z == 3.0/LAS.POINT_SCALE
+    p = LasDatasets.laspoint(LasPoint10, p10_nt, xyz)
+    @test p.x == 1.0/LasDatasets.POINT_SCALE
+    @test p.y == 2.0/LasDatasets.POINT_SCALE
+    @test p.z == 3.0/LasDatasets.POINT_SCALE
     @test p.intensity == 0x8080
     @test p.flag_byte_1 == 0xfa
     @test p.flag_byte_2 == 0x5a

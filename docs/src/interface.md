@@ -1,6 +1,6 @@
 # High-Level Interface
 
-*LAS.jl* provides a number of high-level functions to easily manipulate your *LAS* data. 
+*LasDatasets.jl* provides a number of high-level functions to easily manipulate your *LAS* data. 
 
 ## *LAS* Datasets
 
@@ -74,7 +74,7 @@ pc = Table(position = rand(SVector{3, Float64}, 10), classification = rand(UIn8,
 save_las("my_las.las", pc)
 ```
 
-Note that when you supply just the point cloud outside of a `LasDataset`, *LAS.jl* will automatically construct the appropriate header for you so you don't need to worry about the specifics of appropriate point formats etc. 
+Note that when you supply just the point cloud outside of a `LasDataset`, *LasDatasets.jl* will automatically construct the appropriate header for you so you don't need to worry about the specifics of appropriate point formats etc. 
 
 ## Modifying LAS Contents
 You can modify point fields in your `LasDataset` by adding new columns or merging in values from an existing vector.
