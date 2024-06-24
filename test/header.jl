@@ -12,7 +12,7 @@
     # make sure we can get and set properties ok
     @test las_version(header) == v"1.4"
     @test system_id(header) == "OTHER"
-    @test software_id(header) == LasDatasets.software_version()
+    @test software_id(header) == LASDatasets.software_version()
     @test creation_day_of_year(header) == UInt16(100)
     @test creation_year(header) == UInt16(2024)
     
@@ -22,7 +22,7 @@
     @test point_record_length(header) == UInt16(28)
     set_point_record_length!(header, 30)
     @test point_record_length(header) == UInt16(30)
-    @test record_format(header) == LasDatasets.UndocPointRecord{LasPoint1, 2}
+    @test record_format(header) == LASDatasets.UndocPointRecord{LasPoint1, 2}
     @test point_format(header) == LasPoint1
     @test number_of_points(header) == 100
     set_point_record_count!(header, 150)
@@ -77,7 +77,7 @@
     @test point_data_offset(header) == 227
     @test point_record_length(header) == 20
     @test point_format(header) == LasPoint0
-    @test record_format(header) == LasDatasets.PointRecord{LasPoint0}
+    @test record_format(header) == LASDatasets.PointRecord{LasPoint0}
     @test number_of_points(header) == 497536
     @test number_of_vlrs(header) == 0
     @test number_of_evlrs(header) == 0

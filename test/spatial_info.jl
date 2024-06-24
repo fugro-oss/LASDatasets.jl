@@ -33,7 +33,7 @@
         SVector{3, Float64}(0.0, 1.0, 1.0)
     ]
 
-    xyz = LasDatasets.get_spatial_info(ps)
+    xyz = LASDatasets.get_spatial_info(ps)
 
     # all our points should be contained in the bounding box
     for p ∈ ps
