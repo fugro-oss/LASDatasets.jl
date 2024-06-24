@@ -148,9 +148,9 @@ macro register_vlr_type(type, user_id, record_ids)
                 throw(AssertionError("Record IDs must be a vector of Integers, not $(typeof($(esc(record_ids))))"))
             end
         end 
-        LasDatasets.official_record_ids(::Type{$(esc(type))}) = $(esc(record_ids))
-        LasDatasets.official_user_id(::Type{$(esc(type))}) = $(esc(user_id))
-        global LasDatasets._VLR_TYPE_MAP[($(esc(user_id)), $(esc(record_ids)))] = $(esc(type))
+        LASDatasets.official_record_ids(::Type{$(esc(type))}) = $(esc(record_ids))
+        LASDatasets.official_user_id(::Type{$(esc(type))}) = $(esc(user_id))
+        global LASDatasets._VLR_TYPE_MAP[($(esc(user_id)), $(esc(record_ids)))] = $(esc(type))
     end
 end
 
@@ -184,9 +184,9 @@ This is used to automatically parse VLR data types on reading
 """
 function data_type_from_ids(user_id::String, record_id::Integer)
     matched_type = Vector{UInt8}
-    for k ∈ keys(LasDatasets._VLR_TYPE_MAP)
+    for k ∈ keys(LASDatasets._VLR_TYPE_MAP)
         if (user_id == k[1]) && (record_id ∈ k[2])
-            matched_type = LasDatasets._VLR_TYPE_MAP[k]
+            matched_type = LASDatasets._VLR_TYPE_MAP[k]
             break
         end
     end

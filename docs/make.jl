@@ -1,10 +1,10 @@
-using Documenter, LasDatasets
+using Documenter, LASDatasets
 
 push!(LOAD_PATH,"../src/")
 
 makedocs(
-    modules = [LasDatasets],
-    sitename = "LasDatasets.jl",
+    modules = [LASDatasets],
+    sitename = "LASDatasets.jl",
     pages = [
         "Home" => "index.md",
         "Interface" => "interface.md",
@@ -19,7 +19,7 @@ makedocs(
 )
 
 deploydocs(
-    repo = "github.com/fugro-oss/LasDatasets.jl.git",
+    repo = "github.com/fugro-oss/LASDatasets.jl.git",
     versions = ["stable" => "v^", "v#.#", "dev" => "main"],
     push_preview=true
 )

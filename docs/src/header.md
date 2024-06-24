@@ -1,6 +1,6 @@
 # Header
 
-Each *LAS* file starts with a block of header information that contains metadata for the whole file. *LasDatasets.jl* uses the `LasHeader` struct to wrap around this data and defines a user-friendly interface to modify certain aspects of it.
+Each *LAS* file starts with a block of header information that contains metadata for the whole file. *LASDatasets.jl* uses the `LasHeader` struct to wrap around this data and defines a user-friendly interface to modify certain aspects of it.
 
 ```@docs; canonical = false
 LasHeader

@@ -11,7 +11,7 @@ Saves a pointcloud to LAS or LAZ. The appropriate LAS version and point format i
 * `vlrs` : Collection of Variable Length Records to write to the LAS file, default `LasVariableLengthRecord[]`
 * `evlrs` : Collection of Extended Variable Length Records to write to the LAS file, default `LasVariableLengthRecord[]`
 * `user_defined_bytes` : Any user-defined bytes to write in between the VLRs and point records, default `UInt8[]`
-* `scale` : Scaling factor applied to points on writing, default `LasDatasets.POINT_SCALE`
+* `scale` : Scaling factor applied to points on writing, default `LASDatasets.POINT_SCALE`
 ---
 $(METHODLIST)
 """

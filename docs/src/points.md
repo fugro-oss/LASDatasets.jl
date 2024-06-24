@@ -19,6 +19,6 @@ LasPoint10
 You can get the concrete point format struct and the point format ID for a given `LasPoint` type with the following helper functions:
 
 ```@docs; canonical = false
-LasDatasets.get_point_format
-LasDatasets.get_point_format_id
+LASDatasets.get_point_format
+LASDatasets.get_point_format_id
 ```

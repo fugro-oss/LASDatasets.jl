@@ -1,4 +1,4 @@
-using LasDatasets
+using LASDatasets
 
 using ColorTypes
 using FixedPointNumbers

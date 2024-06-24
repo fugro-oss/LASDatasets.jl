@@ -7,7 +7,7 @@
     )
     header = LasHeader(;
         data_format_id = 0x00,
-        data_record_length = UInt16(LasDatasets.byte_size(LasPoint0)),
+        data_record_length = UInt16(LASDatasets.byte_size(LasPoint0)),
         record_count = UInt64(num_points),
         point_return_count = (UInt64(num_points), zeros(UInt64, 14)...)
     )
@@ -15,7 +15,7 @@
     # should error if our point format in the point cloud is incompatible with the one in the header
     @test_throws AssertionError LasDataset(header, pc, LasVariableLengthRecord[], LasVariableLengthRecord[], UInt8[])
     set_point_format!(header, 1)
-    set_point_record_length!(header, LasDatasets.byte_size(LasPoint1))
+    set_point_record_length!(header, LASDatasets.byte_size(LasPoint1))
 
     # number of points needs to match
     set_point_record_count!(header, num_points + 1)
@@ -50,7 +50,7 @@
     las = LasDataset(header, spicy_pc, LasVariableLengthRecord[], LasVariableLengthRecord[], UInt8[])
     # make sure our record length reflects the user fields
     this_header = get_header(las)
-    @test point_record_length(this_header) == LasDatasets.byte_size(LasPoint1) + 10
+    @test point_record_length(this_header) == LASDatasets.byte_size(LasPoint1) + 10
     # our user fields should be populated in the dataset
     @test las._user_data isa FlexTable
     @test length(las._user_data) == num_points
@@ -63,9 +63,9 @@
     @test length(vlrs) == 1
     vlr_data = get_data.(vlrs)
     @test  vlr_data[1] isa ExtraBytesCollection
-    extra_bytes = LasDatasets.get_extra_bytes(vlr_data[1])
-    @test (LasDatasets.name(extra_bytes[1]) == "thing") && (LasDatasets.data_type(extra_bytes[1]) == Float64)
-    @test (LasDatasets.name(extra_bytes[2]) == "other_thing") && (LasDatasets.data_type(extra_bytes[2]) == Int16)
+    extra_bytes = LASDatasets.get_extra_bytes(vlr_data[1])
+    @test (LASDatasets.name(extra_bytes[1]) == "thing") && (LASDatasets.data_type(extra_bytes[1]) == Float64)
+    @test (LASDatasets.name(extra_bytes[2]) == "other_thing") && (LASDatasets.data_type(extra_bytes[2]) == Int16)
     # and our header should be updated appropriately
     @test number_of_vlrs(header) == 1
     @test point_data_offset(header) == header_size(header) + sum(sizeof.(vlrs))
@@ -74,8 +74,8 @@
     add_column!(las, :new_thing, new_thing)
     vlrs = get_vlrs(las)
     @test length(vlrs) == 1
-    new_extra_bytes = LasDatasets.get_extra_bytes(get_data(vlrs[1]))[3]
-    @test (LasDatasets.name(new_extra_bytes) == "new_thing") && (LasDatasets.data_type(new_extra_bytes) == Float32)
+    new_extra_bytes = LASDatasets.get_extra_bytes(get_data(vlrs[1]))[3]
+    @test (LASDatasets.name(new_extra_bytes) == "new_thing") && (LASDatasets.data_type(new_extra_bytes) == Float32)
     # we shouldn't be able to add columns of different length to the LAS data
     @test_throws AssertionError add_column!(las, :bad, rand(10))
     # now if we replace the values of one of the user fields with a different type, it should work
@@ -83,8 +83,8 @@
     add_column!(las, :thing, new_thing)
     vlrs = get_vlrs(las)
     @test length(vlrs) == 1
-    new_extra_bytes = LasDatasets.get_extra_bytes(get_data(vlrs[1]))[3]
-    @test (LasDatasets.name(new_extra_bytes) == "thing") && (LasDatasets.data_type(new_extra_bytes) == UInt8)
+    new_extra_bytes = LASDatasets.get_extra_bytes(get_data(vlrs[1]))[3]
+    @test (LASDatasets.name(new_extra_bytes) == "thing") && (LASDatasets.data_type(new_extra_bytes) == UInt8)
 
     # merge some data into our dataset
     new_classifications = rand(5:8, num_points)
@@ -93,8 +93,8 @@
 
     # now check we can modify VLRs correctly
     desc = LasVariableLengthRecord(
-        LasDatasets.LAS_SPEC_USER_ID, 
-        LasDatasets.ID_TEXTDESCRIPTION, 
+        LASDatasets.LAS_SPEC_USER_ID, 
+        LASDatasets.ID_TEXTDESCRIPTION, 
         "Text Area Description", 
         TextAreaDescription("This is a LAS dataset captured from somewhere idk")
     )
@@ -108,8 +108,8 @@
     @test point_data_offset(header) == header_size(header) + sum(sizeof.(vlrs))
     # now let's replace this description for another one
     new_desc = LasVariableLengthRecord(
-        LasDatasets.LAS_SPEC_USER_ID, 
-        LasDatasets.ID_TEXTDESCRIPTION, 
+        LASDatasets.LAS_SPEC_USER_ID, 
+        LASDatasets.ID_TEXTDESCRIPTION, 
         "Text Area Description", 
         TextAreaDescription("This is the new dataset description")
     )
@@ -121,7 +121,7 @@
     @test vlrs[3] == new_desc
     superseded_desc = vlrs[2]
     @test get_user_id(superseded_desc) == get_user_id(desc)
-    @test get_record_id(superseded_desc) == LasDatasets.ID_SUPERSEDED
+    @test get_record_id(superseded_desc) == LASDatasets.ID_SUPERSEDED
     @test get_description(superseded_desc) == get_description(desc)
     @test get_data(superseded_desc) == get_data(desc)
     @test is_extended(superseded_desc) == is_extended(desc)
@@ -161,7 +161,7 @@
     @test length(evlrs) == 2
     superseded_comment = evlrs[1]
     @test get_user_id(superseded_comment) == get_user_id(long_comment)
-    @test get_record_id(superseded_comment) == LasDatasets.ID_SUPERSEDED
+    @test get_record_id(superseded_comment) == LASDatasets.ID_SUPERSEDED
     @test get_description(superseded_comment) == get_description(long_comment)
     @test get_data(superseded_comment) == get_data(long_comment)
     @test is_extended(superseded_comment) == is_extended(long_comment)

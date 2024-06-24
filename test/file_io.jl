@@ -25,7 +25,7 @@ function check_las_file(file_name::String, desired_version::VersionNumber, ::Typ
     
     header = get_header(las)
     @test las_version(header) == desired_version
-    @test record_format(header) == LasDatasets.PointRecord{TPoint}
+    @test record_format(header) == LASDatasets.PointRecord{TPoint}
     @test system_id(header) == "OTHER"
 
     @test length(pc) == number_of_points(header)
@@ -73,15 +73,15 @@ end
 
 @testset "LAZ I/O" begin
     @testset "Legacy Specs" begin
-        check_laz_io(joinpath(@__DIR__, "test_files/example_1_1.las"), LasDatasets.has_columns(LasPoint0))
-        check_laz_io(joinpath(@__DIR__, "test_files/example_1_2.las"), LasDatasets.has_columns(LasPoint0))
-        check_laz_io(joinpath(@__DIR__, "test_files/example_1_3.las"), LasDatasets.has_columns(LasPoint0))
+        check_laz_io(joinpath(@__DIR__, "test_files/example_1_1.las"), LASDatasets.has_columns(LasPoint0))
+        check_laz_io(joinpath(@__DIR__, "test_files/example_1_2.las"), LASDatasets.has_columns(LasPoint0))
+        check_laz_io(joinpath(@__DIR__, "test_files/example_1_3.las"), LASDatasets.has_columns(LasPoint0))
     end
 
     @testset "LAS v1.4" begin
-        check_laz_io(joinpath(@__DIR__, "test_files/example_1_4_p0.las"), LasDatasets.has_columns(LasPoint0))
-        check_laz_io(joinpath(@__DIR__, "test_files/example_1_4_p2.las"), LasDatasets.has_columns(LasPoint0))
-        check_laz_io(joinpath(@__DIR__, "test_files/example_1_4_p6.las"), LasDatasets.has_columns(LasPoint0))
+        check_laz_io(joinpath(@__DIR__, "test_files/example_1_4_p0.las"), LASDatasets.has_columns(LasPoint0))
+        check_laz_io(joinpath(@__DIR__, "test_files/example_1_4_p2.las"), LASDatasets.has_columns(LasPoint0))
+        check_laz_io(joinpath(@__DIR__, "test_files/example_1_4_p6.las"), LASDatasets.has_columns(LasPoint0))
     end
 end
 
@@ -95,8 +95,8 @@ norm(x) = sqrt(sum(x.^2))
     amount_over_max = 230.13
     amount_under_min = 41003.8
 
-    overflow_point = typemax(Int32) * LasDatasets.POINT_SCALE + amount_over_max
-    underflow_point = typemin(Int32) * LasDatasets.POINT_SCALE - amount_under_min
+    overflow_point = typemax(Int32) * LASDatasets.POINT_SCALE + amount_over_max
+    underflow_point = typemin(Int32) * LASDatasets.POINT_SCALE - amount_under_min
 
     extreme_point_A = SVector{3}(overflow_point, 20.0, 42.0)
     extreme_point_B = SVector{3}(20.0, 42.0, underflow_point)
@@ -114,18 +114,18 @@ norm(x) = sqrt(sum(x.^2))
 
     # test the non-freak points:
     normal_point_differences = norm.(ps[2:end-1] .- pc.position[2:end-1])
-    @test maximum(normal_point_differences) ≈ 0.0 atol=LasDatasets.POINT_SCALE
+    @test maximum(normal_point_differences) ≈ 0.0 atol=LASDatasets.POINT_SCALE
     
     # test the non-freak components of the extreme points:
-    @test pc.position[1][2] ≈ 20.0 atol=LasDatasets.POINT_SCALE
-    @test pc.position[1][3] ≈ 42.0 atol=LasDatasets.POINT_SCALE
+    @test pc.position[1][2] ≈ 20.0 atol=LASDatasets.POINT_SCALE
+    @test pc.position[1][3] ≈ 42.0 atol=LASDatasets.POINT_SCALE
     
-    @test pc.position[end][1] ≈ 20.0 atol=LasDatasets.POINT_SCALE
-    @test pc.position[end][2] ≈ 42.0 atol=LasDatasets.POINT_SCALE
+    @test pc.position[end][1] ≈ 20.0 atol=LASDatasets.POINT_SCALE
+    @test pc.position[end][2] ≈ 42.0 atol=LASDatasets.POINT_SCALE
     
     # the amount over/under max/min affects the clamped values, as the LAS bounding box is affected as well:
-    @test pc.position[1][1] ≈ (typemax(Int32) * LasDatasets.POINT_SCALE + amount_over_max) atol=LasDatasets.POINT_SCALE
-    @test pc.position[end][3] ≈ (typemin(Int32) * LasDatasets.POINT_SCALE - amount_under_min) atol=LasDatasets.POINT_SCALE
+    @test pc.position[1][1] ≈ (typemax(Int32) * LASDatasets.POINT_SCALE + amount_over_max) atol=LASDatasets.POINT_SCALE
+    @test pc.position[end][3] ≈ (typemin(Int32) * LASDatasets.POINT_SCALE - amount_under_min) atol=LASDatasets.POINT_SCALE
     
 end
 
@@ -501,15 +501,15 @@ end
             vlrs = get_vlrs(new_las)
             # 1 Extra Bytes VLR with 5 entries for "thing" and 1 entry for "other_thing"
             @test length(vlrs) == 1
-            extra_bytes = LasDatasets.get_extra_bytes(get_data(vlrs[1]))
+            extra_bytes = LASDatasets.get_extra_bytes(get_data(vlrs[1]))
             @test length(extra_bytes) == 6
-            @test all(map(i -> LasDatasets.name(extra_bytes[i]) == "thing [$(i - 1)]", 1:5))
-            @test LasDatasets.name(extra_bytes[6]) == "other_thing"
-            @test all(LasDatasets.data_type.(extra_bytes[1:5]) .== Float64)
-            @test LasDatasets.data_type(extra_bytes[6]) == Int
+            @test all(map(i -> LASDatasets.name(extra_bytes[i]) == "thing [$(i - 1)]", 1:5))
+            @test LASDatasets.name(extra_bytes[6]) == "other_thing"
+            @test all(LASDatasets.data_type.(extra_bytes[1:5]) .== Float64)
+            @test LASDatasets.data_type(extra_bytes[6]) == Int
             new_pc = get_pointcloud(new_las)
             for col ∈ columnnames(pc)
-                @test all(isapprox.(getproperty(new_pc, col), getproperty(pc, col); atol = LasDatasets.POINT_SCALE))
+                @test all(isapprox.(getproperty(new_pc, col), getproperty(pc, col); atol = LASDatasets.POINT_SCALE))
             end
         end
     end
