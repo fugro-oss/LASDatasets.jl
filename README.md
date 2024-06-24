@@ -1,9 +1,9 @@
-# LAS.jl 
+# LasDatasets.jl 
 
-[![CI](https://github.com/fugro-oss/LAS.jl/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/fugro-oss/LAS.jl/actions/workflows/ci.yml)
-[![](https://img.shields.io/badge/docs-latest-blue.svg)](https://fugro-oss.github.io/LAS.jl/dev)
+[![CI](https://github.com/fugro-oss/LasDatasets.jl/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/fugro-oss/LasDatasets.jl/actions/workflows/ci.yml)
+[![](https://img.shields.io/badge/docs-latest-blue.svg)](https://fugro-oss.github.io/LasDatasets.jl/dev)
 
-You can find the latest documentation [here](https://fugro-oss.github.io/LAS.jl/dev/)
+You can find the latest documentation [here](https://fugro-oss.github.io/LasDatasets.jl/dev/)
 
 A Julia package for reading and writing *LAS* data. *LAS* is a public file format for saving and loading 3D point cloud data, and its source repository can be found [here](https://github.com/ASPRSorg/LAS). This package currently supports *LAS* specifications 1.1-1.4 (see [here](https://www.asprs.org/wp-content/uploads/2019/03/LAS_1_4_r14.pdf) for the 1.4 spec.)
 
@@ -20,8 +20,8 @@ These instructions will get you a copy of the project up and running on your loc
 
 ```
 using Pkg
-Pkg.add("git@github.com:fugro-oss/LAS.jl.git")
-using LAS
+Pkg.add("git@github.com:fugro-oss/LasDatasets.jl.git")
+using LasDatasets
 ```
 
 And you're ready to go!
@@ -33,7 +33,7 @@ you follow the [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
 
 ## Versioning
 
-We use [SemVer](http://semver.org/) for versioning. For the versions available, see the [tags on this repository](https://github.com/fugro-oss/LAS.jl/tags). 
+We use [SemVer](http://semver.org/) for versioning. For the versions available, see the [tags on this repository](https://github.com/fugro-oss/LasDatasets.jl/tags). 
 
 ## Authors
 

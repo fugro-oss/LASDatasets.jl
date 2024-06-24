@@ -1,6 +1,6 @@
-# Contributing to LAS.jl
+# Contributing to LasDatasets.jl
 
-**Thank you for your interest in LAS.jl. Your contributions are highly welcome.**
+**Thank you for your interest in LasDatasets.jl. Your contributions are highly welcome.**
 
 There are multiple ways of getting involved:
 

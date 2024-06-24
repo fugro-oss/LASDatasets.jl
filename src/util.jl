@@ -125,7 +125,7 @@ end
 
 function software_version()
     laspoints_version = read_project(joinpath( dirname(@__FILE__()), "..", "Project.toml")).version
-    return "LAS.jl v$(laspoints_version)"
+    return "LasDatasets.jl v$(laspoints_version)"
 end
 
 function get_base_field_name(field::Symbol)

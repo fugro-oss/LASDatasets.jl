@@ -9,7 +9,7 @@ pc = Table(position = rand(SVector{3, Float64}, 10), classification = rand(UIn8,
 save_las("my_pc.las", pc)
 ```
 
-Under the hood, *LAS.jl* will automatically create the appropriate header fields for data record lengths etc. and will also create the appropriate Extra Bytes *VLRs* and save them in your *LAS* file. 
+Under the hood, *LasDatasets.jl* will automatically create the appropriate header fields for data record lengths etc. and will also create the appropriate Extra Bytes *VLRs* and save them in your *LAS* file. 
 
 You can also add user fields to your *LAS* datasets as you go by calling `add_column!` with your new data and column name:
 
@@ -25,7 +25,7 @@ Reading user fields from *LAS* files is just as easy, since you can simply speci
 las = load_las("my_pc.las", [:position, :classification, :thing])
 ```
 
-Note that user fields can also be vectors of static vectors, and once again *LAS.jl* will automatically save the appropriate Extra Bytes *VLRs* for you so you can specify them as you would any other user field:
+Note that user fields can also be vectors of static vectors, and once again *LasDatasets.jl* will automatically save the appropriate Extra Bytes *VLRs* for you so you can specify them as you would any other user field:
 
 ```julia
 using StaticArrays

@@ -2,7 +2,7 @@
 
 *Variable Length Records* are useful packets of data that one can include between the header block and start of the point records in a *LAS* file. The *LAS* 1.4 spec also allows for larger data payloads to be stored as *Extended Variable Length Records*, which are stored at the end of the file after the point records. The difference between these is that regular *VLRs* can only have a payload up to 2^16 bytes whereas *EVLRs* can have a payload up to 2^64.
 
-All types of *VLRs* (regular and extended) are wrapped inside a `LasVariableLengthRecord` struct, which holds the data payload as well as the relevant *VLR* IDs and metadata. Each `LasVariableLengthRecord` is parametrised by the type of data in its payload which makes *LAS.jl* able to handle parsing each *VLR* to/from a native *Julia* struct automatically.
+All types of *VLRs* (regular and extended) are wrapped inside a `LasVariableLengthRecord` struct, which holds the data payload as well as the relevant *VLR* IDs and metadata. Each `LasVariableLengthRecord` is parametrised by the type of data in its payload which makes *LasDatasets.jl* able to handle parsing each *VLR* to/from a native *Julia* struct automatically.
 
 ```@docs; canonical = false
 LasVariableLengthRecord
@@ -15,7 +15,7 @@ coordinate transformation service implementation specification [here](https://ww
 
 ### WKT
 
-*LAS.jl* supports the *OGC Coordinate System WKT Record*, which is handled by the struct `OGC_WKT`. Currently we don't support *OGC Math Transform WKT*, however this could be supported in a future release.
+*LasDatasets.jl* supports the *OGC Coordinate System WKT Record*, which is handled by the struct `OGC_WKT`. Currently we don't support *OGC Math Transform WKT*, however this could be supported in a future release.
 
 ```@docs; canonical = false
 OGC_WKT
@@ -35,11 +35,11 @@ GeoAsciiParamsTag
 
 ## Other Specification-Defined VLRs
 
-The *LAS* 1.4 spec also includes several other recognised *VLRs* that are automatically supported in *LAS.jl*. 
+The *LAS* 1.4 spec also includes several other recognised *VLRs* that are automatically supported in *LasDatasets.jl*. 
 
 ### Classification Lookup
 
-*LAS* 1.4 allows you to specify classification labels 0-255 for your point formats 6-10, where labels 0-22 having specific classes associated with them, classes 23-63 being reserved and classes 64-255 being user-definable. To give context to what your classes mean, you can add a Classification Lookup *VLR* into your *LAS* file, which is just a collection of classification labels paired with a string description. In *LAS.jl*, this is handled as a `ClassificationLookup`:
+*LAS* 1.4 allows you to specify classification labels 0-255 for your point formats 6-10, where labels 0-22 having specific classes associated with them, classes 23-63 being reserved and classes 64-255 being user-definable. To give context to what your classes mean, you can add a Classification Lookup *VLR* into your *LAS* file, which is just a collection of classification labels paired with a string description. In *LasDatasets.jl*, this is handled as a `ClassificationLookup`:
 
 ```@docs; canonical = false
 ClassificationLookup
@@ -84,17 +84,17 @@ add_vlr!(las, LasVariableLengthRecord("LASF_Spec", 3, "Text Area Description", d
 
 Extra Bytes *VLRs* are a type of *VLR* that documents any user fields that have been added to point records in your *LAS* data. You can find an in-depth explanation of how to save/load user defined fields to your points [here](./user_fields.md). 
 
-The Extra Bytes *VLRs* are represented by the `ExtraBytes` struct, and have a few methods to get some information from them. Note that currrently *LAS.jl* only supports automatically detecting and writing the user field name, data type and description to the *VLR* based on input point data. Support for other fields such as the min/max range, scale/offset factors, etc. may become available in future releases. You can, however, still manually specify these if you choose.
+The Extra Bytes *VLRs* are represented by the `ExtraBytes` struct, and have a few methods to get some information from them. Note that currrently *LasDatasets.jl* only supports automatically detecting and writing the user field name, data type and description to the *VLR* based on input point data. Support for other fields such as the min/max range, scale/offset factors, etc. may become available in future releases. You can, however, still manually specify these if you choose.
 
 ```@docs; canonical = false
 ExtraBytes
-LAS.name
-LAS.data_type
+LasDatasets.name
+LasDatasets.data_type
 ```
 
 ### Waveform Data
 
-Currently *LAS.jl* doesn't have fully extensive support for waveform data and flags, but this will likely be included in future releases. We do, however, support writing waveform packet descriptions as *VLRs* with the `WaveformPacketDescriptor`. 
+Currently *LasDatasets.jl* doesn't have fully extensive support for waveform data and flags, but this will likely be included in future releases. We do, however, support writing waveform packet descriptions as *VLRs* with the `WaveformPacketDescriptor`. 
 
 ```@docs; canonical = false
 WaveformPacketDescriptor
@@ -102,11 +102,11 @@ WaveformPacketDescriptor
 
 ## Custom VLRs
 
-As well as the *VLR* record types mentioned above, you can write your own *Julia*-native structs as *VLRs* quite easily using *LAS.jl*. By default, *LAS.jl* will just read the raw bytes for your *VLRs*, so there are a couple of steps to enable correct *VLR* parsing.
+As well as the *VLR* record types mentioned above, you can write your own *Julia*-native structs as *VLRs* quite easily using *LasDatasets.jl*. By default, *LasDatasets.jl* will just read the raw bytes for your *VLRs*, so there are a couple of steps to enable correct *VLR* parsing.
 
 Firstly, you need to define methods to read and write your data type. For writing, this just means overloading `Base.write` for your type.
 
-Reading works a little differently. Since each *VLR* has a "record length after header", the system knows how many bytes each record needs. If your data type has statically-sized fields (like numbers or static arrays), you already know how many bytes you're reading (and this needs to be reflected in a `Base.sizeof` method for your type). You'll need to overload the function `LAS.read_vlr_data` for your data type, which accepts the number of bytes to read alongside your type. This allows you to read non-static types for fields as well as static ones.
+Reading works a little differently. Since each *VLR* has a "record length after header", the system knows how many bytes each record needs. If your data type has statically-sized fields (like numbers or static arrays), you already know how many bytes you're reading (and this needs to be reflected in a `Base.sizeof` method for your type). You'll need to overload the function `LasDatasets.read_vlr_data` for your data type, which accepts the number of bytes to read alongside your type. This allows you to read non-static types for fields as well as static ones.
 
 ```@docs; canonical = false
 read_vlr_data
@@ -124,10 +124,10 @@ end
 # important to know how many bytes your record will take up
 Base.sizeof(x::MyType) = Base.sizeof(x.name) + 8
 
-function LAS.read_vlr_data(io::IO, ::Type{MyType}, nb::Integer)
+function LasDatasets.read_vlr_data(io::IO, ::Type{MyType}, nb::Integer)
     @assert nb ≥ 8 "Not enough bytes to read data of type MyType!"
     # the name will depend on how many bytes we've been told to read
-    name = LAS.readstring(io, nb - 8)
+    name = LasDatasets.readstring(io, nb - 8)
     value = read(io, Float64)
     return MyType(name, value)
 end
