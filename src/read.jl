@@ -7,7 +7,7 @@ Load a LAS dataset from a source file
 * `file_name` : Name of the LAS file to extract data from
 * `fields` : Name of the LAS point fields to extract as columns in the output data. If set to `nothing`, ingest all available columns. Default `DEFAULT_LAS_COLUMNS`
 """
-function load_las(file_name::AbstractString, 
+function load_las(file_name::AbstractString,
                     fields::TFields = DEFAULT_LAS_COLUMNS;
                     kwargs...) where {TFields}
 
@@ -93,7 +93,7 @@ Read LAS data from an IO source
 """
 function read_las_data(io::TIO, required_columns::TTuple=DEFAULT_LAS_COLUMNS;
                         convert_to_metres::Bool = true,
-                        convert_x_y_units::Union{String, Missing} = missing, 
+                        convert_x_y_units::Union{String, Missing} = missing,
                         convert_z_units::Union{String, Missing} = missing) where {TIO <: Union{Base.AbstractPipe,IO}, TTuple}
 
     header = read(io, LasHeader)
@@ -112,11 +112,10 @@ function read_las_data(io::TIO, required_columns::TTuple=DEFAULT_LAS_COLUMNS;
 
     this_format = record_format(header, extra_bytes)
     xyz = spatial_info(header)
-    
+
     # using an iterator is approx 2x faster than simply doing map(_ -> read(io, T), 1:N)
-    iter = ReadPointsIterator{TIO, this_format}(io, number_of_points(header))
-    records = map(r -> r, iter)
-    
+    records = Vector{this_format}(undef, number_of_points(header))
+    read!(io, records)
     as_table = make_table(records, required_columns, xyz)
 
     conversion = if convert_to_metres
@@ -151,7 +150,7 @@ function make_table(records::Vector{ExtendedPointRecord{TPoint, Names, Types}}, 
     las_columns, extractors = get_cols_and_extractors(TPoint, required_columns, xyz)
     user_fields, grouped_user_fields = get_user_fields_for_table(records, Names, required_columns)
     Table(NamedTuple{ (las_columns..., user_fields...,) }( (
-        map(e -> get_column.(Ref(e), records), extractors)..., 
+        map(e -> get_column.(Ref(e), records), extractors)...,
         grouped_user_fields...
     ) ))
 end
@@ -165,7 +164,7 @@ function make_table(records::Vector{FullRecord{TPoint, Names, Types, N}}, requir
     las_columns, extractors = get_cols_and_extractors(TPoint, required_columns, xyz)
     user_fields, grouped_user_fields = get_user_fields_for_table(records, Names, required_columns)
     Table(NamedTuple{ (las_columns..., user_fields..., :undocumented_bytes) }( (
-            map(e -> get_column.(Ref(e), records), extractors)..., 
+            map(e -> get_column.(Ref(e), records), extractors)...,
             grouped_user_fields...,
             get_undocumented_bytes.(records)
         ) ))
@@ -194,7 +193,7 @@ end
 """
     $(TYPEDSIGNATURES)
 
-Helper function that finds the names of user-defined point fields that have been requested by a user and group them together if they form arrays in the output data. 
+Helper function that finds the names of user-defined point fields that have been requested by a user and group them together if they form arrays in the output data.
 Note according to spec that user-defined array field names must be of the form `col [0], col[1], ..., col[N]` where `N` is the dimension of the user field
 """
 function get_user_fields_for_table(records::Vector{TRecord}, Names::Tuple, required_columns::TTuple) where {TRecord <: Union{ExtendedPointRecord, FullRecord}, TTuple}
@@ -264,7 +263,7 @@ function convert_units!(pointcloud::AbstractVector{<:NamedTuple}, vlrs::Vector{L
         # we are not requesting unit conversion and there is no OGC WKT VLR
         if ismissing(convert_x_y_units) && ismissing(convert_z_units) && count(these_are_wkts) == 0
             return NO_CONVERSION
-        else 
+        else
             @assert count(these_are_wkts) == 1 "Expected to find 1 OGC WKT VLR, instead found $(count(these_are_wkts))"
             ogc_wkt = get_data(vlrs[findfirst(these_are_wkts)])
             conversion = conversion_from_vlrs(ogc_wkt, convert_x_y_units = convert_x_y_units, convert_z_units = convert_z_units)
@@ -279,42 +278,3 @@ function convert_units!(pointcloud::AbstractVector{<:NamedTuple}, vlrs::Vector{L
     end
     return NO_CONVERSION
 end
-
-"""
-    $(TYPEDEF)
-
-An iterator for reading point records
-    
-$(TYPEDFIELDS)
-"""
-struct ReadPointsIterator{TIO, TRecord}
-    """IO channel to read point records from"""
-    io::TIO
-
-    """Number of points to read in total"""
-    num_points::Integer
-end
-
-function Base.iterate(iter::ReadPointsIterator{TIO, TRecord}) where {TIO,TRecord}
-    if iter.num_points == 0
-        return nothing
-    else
-        return (read(iter.io, TRecord), 1)
-    end
-end
-
-function Base.iterate(iter::ReadPointsIterator{TIO, TRecord}, n::Integer) where {TIO,TRecord}
-    if n ≥ iter.num_points
-        return nothing
-    else
-        return (read(iter.io, TRecord), n + 1)
-    end
-end
-
-
-Base.eltype(::Type{ReadPointsIterator{TIO, TRecord}}) where {TIO,TRecord} = TRecord
-Base.length(iter::ReadPointsIterator{TIO, TRecord}) where {TIO,TRecord} = iter.num_points
-
-Base.IteratorSize(::Type{ReadPointsIterator{TIO, TRecord}}) where {TIO,TRecord} = Base.HasLength()
-Base.IteratorEltype(::Type{ReadPointsIterator{TIO, TRecord}}) where {TIO,TRecord} = Base.HasEltype()
-Base.isdone(iter::ReadPointsIterator{TIO, TRecord}) where {TIO, TRecord} = position(iter.io) ≥ (iter.num_points * byte_size(TRecord))
