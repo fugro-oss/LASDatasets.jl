@@ -8,28 +8,21 @@ $(TYPEDFIELDS)
 ---
 $(METHODLIST)
 """
-mutable struct UserFields{Names, Types}
+struct UserFields{Names, Types}
     """Mapping of field names to values. Note that values must match the corresponding field type included in the `UserFields` `Type` parameter"""
     values::NamedTuple{Names,Types}
 end
 
-function UserFields{Names,Types}(dict::Dict{Symbol,Any}) where {Names,Types}
-    return UserFields{Names,Types}(NamedTuple{Names}(values(dict)))
-end
-function UserFields(values::Dict{Symbol,Any})
-    return UserFields(NamedTuple(values))
-end
 function UserFields(fields::Vararg{Pair{Symbol}, N}) where N
     return UserFields(NamedTuple(fields))
 end
-
-
 
 function Base.:(==)(u1::UserFields{N, T}, u2::UserFields{M, S}) where {N, M, T, S}
     return N == M && T == S && u1.values == u2.values
 end
 
 Base.sizeof(::Type{UserFields{Names, Types}}) where {Names, Types} = sum(sizeof.(Types))
+Base.sizeof(user_fields::UserFields) = sizeof(user_fields.values)
 
 # overloaded so we can access user fields in a struct array (see read functions)
 function Base.getproperty(u::UserFields{Names}, field::Symbol) where Names
@@ -38,21 +31,7 @@ function Base.getproperty(u::UserFields{Names}, field::Symbol) where Names
     return getfield(vals, field)
 end
 
-function get_data_type(::UserFields{Names, Types}, field::Symbol) where {Names, Types}
-    return fieldtype(NamedTuple{Names,Types}, field)
-end
-
-function Base.setproperty!(u::UserFields{Names}, field::Symbol, value::T) where {Names, T}
-    @assert field in Names "Field $(field) not present!"
-    nt = getfield(u, :values)
-    N = length(Names)
-    values = ntuple(i -> ifelse(Names[i] === field, value, getfield(nt, i)), N)
-    setfield!(u, :values, NamedTuple{Names}(values))
-    return u
-end
-
 Base.propertynames(::Type{UserFields{Names, Types}}) where {Names, Types} = Names
-data_types(::Type{UserFields{Names, Types}}) where {Names, Types} = Types
 
 function Base.show(io::IO, u::UserFields{Names, Types}) where {Names, Types}
     print(io, "UserFields(")
@@ -66,9 +45,7 @@ function Base.show(io::IO, u::UserFields{Names, Types}) where {Names, Types}
 end
 
 function Base.read(io::IO, ::Type{UserFields{Names, Types}}) where {Names, Types}
-    ref = Ref{Types}()
-    read!(io, ref)
-    return UserFields{Names,Types}(NamedTuple{Names}(ref[]))
+    return UserFields{Names, Types}(NamedTuple{Names}(read.(io, fieldtypes(Types))))
 end
 
 StructArrays.staticschema(::Type{UserFields{Names, Types}}) where {Names, Types} = NamedTuple{Names, Types}
