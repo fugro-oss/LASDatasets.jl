@@ -62,7 +62,7 @@ function open_laz(func::Function, file::String, rw::String = "r")
 
         try
             return func(io)
-        finally        
+        finally
             close(io)
             rm(las_file, force=true)
         end
@@ -77,9 +77,9 @@ function open_laz(func::Function, file::String, rw::String = "r")
             result = func(io)
             success = true
             return result
-        finally        
+        finally
             close(io)
-            
+
             if (success)
                 mkpath(dirname(file))
                 run(`$(laszip()) -i $(las_file) -o $(file)`)
@@ -87,7 +87,7 @@ function open_laz(func::Function, file::String, rw::String = "r")
 
             rm(las_file, force=true)
         end
-        
+
     else
         error("Read \"r\" OR write \"w\".")
     end
@@ -96,7 +96,7 @@ end
 is_laz(file_name::AbstractString) = endswith(file_name, ".laz")
 
 function get_open_func(file_name::String)
-    ext = String(split(file_name, ".", keepempty = false)[end])
+    ext = lowercase(String(split(file_name, ".", keepempty = false)[end]))
     @assert (ext == "las") || (ext == "laz") "Invalid file extension! Require .las or .laz files"
     open_func = (ext == "las") ? open_las : open_laz
     return open_func

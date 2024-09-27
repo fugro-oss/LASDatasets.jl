@@ -10,59 +10,28 @@ $(METHODLIST)
 """
 struct UserFields{Names, Types}
     """Mapping of field names to values. Note that values must match the corresponding field type included in the `UserFields` `Type` parameter"""
-    values::Dict{Symbol, Any}
-
-    function UserFields{Names, Types}(values::Dict{Symbol, Any}) where {Names, Types}
-        ks = Tuple(collect(keys(values)))
-        types = Tuple{map(k -> typeof(values[k]), ks)...}
-        @assert ks == Names
-        @assert types == Types
-        return new{Names, Types}(values)
-    end
-
-    function UserFields(values::Dict{Symbol, Any})
-        ks = Tuple(collect(keys(values)))
-        types = Tuple{map(k -> typeof(values[k]), ks)...}
-        return new{ks, types}(values)
-    end
+    values::NamedTuple{Names,Types}
 end
 
 function UserFields(fields::Vararg{Pair{Symbol}, N}) where N
-    return UserFields(Dict{Symbol, Any}(fields))
+    return UserFields(NamedTuple(fields))
 end
 
 function Base.:(==)(u1::UserFields{N, T}, u2::UserFields{M, S}) where {N, M, T, S}
-    all([
-        N == M,
-        T == S,
-        u1.values == u2.values
-    ])
+    return N == M && T == S && u1.values == u2.values
 end
 
 Base.sizeof(::Type{UserFields{Names, Types}}) where {Names, Types} = sum(sizeof.(Types))
+Base.sizeof(user_fields::UserFields) = sizeof(user_fields.values)
 
 # overloaded so we can access user fields in a struct array (see read functions)
-function Base.getproperty(u::UserFields, field::Symbol)
+function Base.getproperty(u::UserFields{Names}, field::Symbol) where Names
+    @assert field in Names "Field $(field) not present!"
     vals = getfield(u, :values)
-    @assert field ∈ keys(vals) "Field $(field) not present!"
-    vals[field]
-end
-
-function get_data_type(::UserFields{Names, Types}, field::Symbol) where {Names, Types}
-    idx = findfirst(Names .== field)
-    @assert !isnothing(idx) "Field $(field) not present"
-    return fieldtypes(Types)[idx]
-end
-
-function Base.setproperty!(u::UserFields, field::Symbol, value::T) where {T}
-    vals = getfield(u, :values)
-    @assert field ∈ keys(vals) "Field $(field) not present!"
-    existsing_type = get_data_type(u, field)
-    vals[field] = convert(existsing_type, value)
+    return getfield(vals, field)
 end
 
 Base.propertynames(::Type{UserFields{Names, Types}}) where {Names, Types} = Names
-data_types(::Type{UserFields{Names, Types}}) where {Names, Types} = Types
 
 function Base.show(io::IO, u::UserFields{Names, Types}) where {Names, Types}
     print(io, "UserFields(")
@@ -76,7 +45,7 @@ function Base.show(io::IO, u::UserFields{Names, Types}) where {Names, Types}
 end
 
 function Base.read(io::IO, ::Type{UserFields{Names, Types}}) where {Names, Types}
-    UserFields(map(i -> Names[i] => read(io, fieldtypes(Types)[i]), eachindex(Names))...)
+    return UserFields{Names, Types}(NamedTuple{Names}(read.(io, fieldtypes(Types))))
 end
 
 StructArrays.staticschema(::Type{UserFields{Names, Types}}) where {Names, Types} = NamedTuple{Names, Types}
@@ -148,7 +117,9 @@ function PointRecord(point::TPoint) where {TPoint <: LasPoint}
     PointRecord{TPoint}(point)
 end
 
-Base.read(io::IO, ::Type{PointRecord{TPoint}}) where {TPoint <: LasPoint} = PointRecord(read_struct(io, TPoint))
+function Base.read(io::IO, ::Type{PointRecord{TPoint}}) where {TPoint <: LasPoint}
+    PointRecord(read_struct(io, TPoint))
+end
 
 get_point_format(::Type{PointRecord{TPoint}}) where TPoint = TPoint
 get_num_user_field_bytes(::Type{TRecord}) where {TRecord <: PointRecord} = 0
@@ -157,7 +128,7 @@ get_num_undocumented_bytes(::Type{TRecord}) where {TRecord <: PointRecord} = 0
 """
     $(TYPEDEF)
 
-A LAS record that has a LAS point and extra user-defined point fields. 
+A LAS record that has a LAS point and extra user-defined point fields.
 Note that these must be documented as `ExtraBytes` VLRs in the LAS file
 
 $(TYPEDFIELDS)
@@ -167,16 +138,16 @@ struct ExtendedPointRecord{TPoint, Names, Types} <: LasRecord
     point::TPoint
 
     """Extra user fields associated with this point"""
-    user_fields::UserFields{Names, Types}
+    user_fields::UserFields{Names,Types}
 end
 
-function ExtendedPointRecord(point::TPoint, user_fields::UserFields{Names, Types}) where {TPoint <: LasPoint, Names, Types}
-    ExtendedPointRecord{TPoint, Names, Types}(point, user_fields)
+function ExtendedPointRecord(point::TPoint, user_fields::UserFields{Names,Types}) where {TPoint<:LasPoint,Names,Types}
+    ExtendedPointRecord{TPoint,Names,Types}(point, user_fields)
 end
 
-function Base.read(io::IO, ::Type{ExtendedPointRecord{TPoint, Names, Types}}) where {TPoint <: LasPoint, Names, Types}
+function Base.read(io::IO, ::Type{ExtendedPointRecord{TPoint,Names,Types}}) where {TPoint<:LasPoint,Names,Types}
     point = read_struct(io, TPoint)
-    user_fields = read(io, UserFields{Names, Types})
+    user_fields = read(io, UserFields{Names,Types})
     return ExtendedPointRecord(point, user_fields)
 end
 
