@@ -257,7 +257,7 @@ end
 Convert the position units of some `pointcloud` data into metres based upon the coordinate units in the LAS file's `vlrs`.
 Can override the unit conversion by manually specifying a unit to convert on the *XY*-plane, `convert_x_y_units`, and/or a unit to convert on the z-axis `convert_z_units` (missing if not overriding)
 """
-function convert_units!(pointcloud::AbstractVector{<:NamedTuple}, vlrs::Vector{LasVariableLengthRecord}, convert_x_y_units::Union{Missing, String}, convert_z_units::Union{Missing, String})
+function convert_units!(pointcloud::AbstractVector{<:NamedTuple}, vlrs::Vector{LasVariableLengthRecord}, convert_x_y_units::Union{Missing, String}, convert_z_units::Union{Missing, String}; verbose::Bool = false)
     if :position ∈ columnnames(pointcloud)
         these_are_wkts = is_ogc_wkt_record.(vlrs)
         # we are not requesting unit conversion and there is no OGC WKT VLR
@@ -268,7 +268,7 @@ function convert_units!(pointcloud::AbstractVector{<:NamedTuple}, vlrs::Vector{L
             ogc_wkt = get_data(vlrs[findfirst(these_are_wkts)])
             conversion = conversion_from_vlrs(ogc_wkt, convert_x_y_units = convert_x_y_units, convert_z_units = convert_z_units)
             if !ismissing(conversion) && any(conversion .!= 1.0)
-                @info "Positions converted to meters using conversion $(conversion)"
+                verbose && @info "Positions converted to meters using conversion $(conversion)"
                 pointcloud = pointcloud.position .= map(p -> p .* conversion, pointcloud.position)
                 return conversion
             else

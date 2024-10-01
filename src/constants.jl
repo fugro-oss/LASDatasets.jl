@@ -36,6 +36,5 @@ const DEFAULT_LAS_COLUMNS = (:position, :intensity, :classification, :returnnumb
 const ALL_LAS_COLUMNS = nothing
 
 POINT_SCALE = 0.0001
-global const _VLR_TYPE_MAP = Dict()
 
 const SUPPORTED_EXTRA_BYTES_TYPES = [UInt8, Int8, UInt16, Int16, UInt32, Int32, UInt64, Int64, Float32, Float64]
