@@ -143,9 +143,9 @@ function data_type_from_ids(user_id::String, record_id::Integer)
 end
 
 function get_all_vlr_types()
-    # eval to make sure we get the methods in the global scope
-    ms = @eval methods(LASDatasets.official_record_ids)
-    types = DataType[]
+    # eval to make sure we get the methods in the global scope - use both the user and record IDs methods to check for types
+    ms = @eval vcat(methods(LASDatasets.official_user_id), methods(LASDatasets.official_record_ids))
+    types = Set{DataType}()
     for m ∈ ms
         sig = m.sig
         if !(sig isa UnionAll)
@@ -153,7 +153,7 @@ function get_all_vlr_types()
             push!(types, eval(sig.parameters[2].parameters[1]))
         end
     end
-    return types
+    return collect(types)
 end
 
 """
