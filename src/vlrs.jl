@@ -133,7 +133,7 @@ This is used to automatically parse VLR data types on reading
 data_type_from_ids(::Val{User}, ::Val{Record}) where {User, Record} = Vector{UInt8}
 
 # convenience function so you don't have to worry about wrapping Vals
-data_type_from_ids(user_id::String, record_id::Integer) = data_type_from_ids(Val(Symbol(user_id)), Val(record_id))
+data_type_from_ids(user_id::String, record_id::Integer) = data_type_from_ids(Val(Symbol(user_id)), Val(Int(record_id)))
 
 """
     $(TYPEDSIGNATURES)
@@ -169,7 +169,7 @@ macro register_vlr_type(type, user_id, record_ids)
 
         # for each combination of (user_id, record_id), make a method to get the expected data type for that combination
         for id ∈ this_record_ids
-            LASDatasets.data_type_from_ids(::Val{Symbol($(esc(user_id)))}, ::Val{id}) = $(esc(type))
+            LASDatasets.data_type_from_ids(::Val{Symbol($(esc(user_id)))}, ::Val{Int(id)}) = $(esc(type))
         end
     end
 end
