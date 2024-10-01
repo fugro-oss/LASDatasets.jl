@@ -130,10 +130,31 @@ official_record_ids(::Type{TData}) where TData = error("Official record IDs not 
 Get the data type associated with a particular `user_id` and `record_id`. 
 This is used to automatically parse VLR data types on reading
 """
-data_type_from_ids(::Val{User}, ::Val{Record}) where {User, Record} = Vector{UInt8}
+function data_type_from_ids(user_id::String, record_id::Integer)
+    registered_vlr_types = get_all_vlr_types()
 
-# convenience function so you don't have to worry about wrapping Vals
-data_type_from_ids(user_id::String, record_id::Integer) = data_type_from_ids(Val(Symbol(user_id)), Val(Int(record_id)))
+    for type ∈ registered_vlr_types
+        if (user_id == official_user_id(type)) && (record_id ∈ official_record_ids(type))
+            return type
+        end
+    end
+
+    error("Can't find VLR data type to parse for user ID $(user_id) and record ID $(record_id)")
+end
+
+function get_all_vlr_types()
+    # eval to make sure we get the methods in the global scope
+    ms = @eval methods(LASDatasets.official_record_ids)
+    types = DataType[]
+    for m ∈ ms
+        sig = m.sig
+        if !(sig isa UnionAll)
+            # need to convert from a TypeVar to a DataType using eval
+            push!(types, eval(sig.parameters[2].parameters[1]))
+        end
+    end
+    return types
+end
 
 """
     $(TYPEDSIGNATURES)
@@ -166,11 +187,6 @@ macro register_vlr_type(type, user_id, record_ids)
 
         LASDatasets.official_record_ids(::Type{$(esc(type))}) = this_record_ids
         LASDatasets.official_user_id(::Type{$(esc(type))}) = $(esc(user_id))
-
-        # for each combination of (user_id, record_id), make a method to get the expected data type for that combination
-        for id ∈ this_record_ids
-            LASDatasets.data_type_from_ids(::Val{Symbol($(esc(user_id)))}, ::Val{Int(id)}) = $(esc(type))
-        end
     end
 end
 
