@@ -120,8 +120,11 @@
         @test_throws AssertionError @register_vlr_type [1, 2, 3] "User ID" [1, 2]
 
         @register_vlr_type Vector{Int} "User ID" [1, 2]
-        @test ("User ID", [1, 2]) ∈ keys(LASDatasets._VLR_TYPE_MAP) && (LASDatasets._VLR_TYPE_MAP["User ID", [1, 2]] == Vector{Int})
-        
+
+        for i ∈ 1:2
+            @test LASDatasets.data_type_from_ids("User ID", i) == Vector{Int}
+        end
+
         @register_vlr_type String "Custom" collect(10:15)
         LASDatasets.read_vlr_data(io::IO, ::Type{String}, nb::Integer) = LASDatasets.readstring(io, nb)
         
