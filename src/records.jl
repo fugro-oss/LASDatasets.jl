@@ -183,7 +183,7 @@ function Base.read(io::IO, ::Type{UndocPointRecord{TPoint, N}}) where {TPoint <:
 end
 
 get_point_format(::Type{UndocPointRecord{TPoint, N}}) where {TPoint, N} = TPoint
-get_num_user_field_bytes(::Type{UndocPointRecord}) = 0
+get_num_user_field_bytes(::Type{TRecord}) where {TRecord <: UndocPointRecord} = 0
 get_num_undocumented_bytes(::Type{UndocPointRecord{TPoint, N}}) where {TPoint, N} = N
 get_undocumented_bytes(record::UndocPointRecord) = record.undoc_bytes
 

@@ -7,7 +7,7 @@ To properly define I/O methods for VLR's of custom structs, you must register wh
 will use using 
 
 ```julia
-@register_vlr_type(TData, user_id, record_ids)
+@register_vlr_type TData user_id record_ids
 ```
 
 And overload the methods `read_vlr_data` and `write_vlr_data` for your type `TData`
@@ -127,30 +127,66 @@ official_record_ids(::Type{TData}) where TData = error("Official record IDs not 
 """
     $(TYPEDSIGNATURES)
 
+Get the data type associated with a particular `user_id` and `record_id`. 
+This is used to automatically parse VLR data types on reading
+"""
+function data_type_from_ids(user_id::String, record_id::Integer)
+    registered_vlr_types = get_all_vlr_types()
+
+    for type ∈ registered_vlr_types
+        if (user_id == official_user_id(type)) && (record_id ∈ official_record_ids(type))
+            return type
+        end
+    end
+
+    error("Can't find VLR data type to parse for user ID $(user_id) and record ID $(record_id)")
+end
+
+function get_all_vlr_types()
+    # eval to make sure we get the methods in the global scope - use both the user and record IDs methods to check for types
+    ms = @eval vcat(methods(LASDatasets.official_user_id), methods(LASDatasets.official_record_ids))
+    types = Set{DataType}()
+    for m ∈ ms
+        sig = m.sig
+        if !(sig isa UnionAll)
+            # need to convert from a TypeVar to a DataType using eval
+            push!(types, eval(sig.parameters[2].parameters[1]))
+        end
+    end
+    return collect(types)
+end
+
+"""
+    $(TYPEDSIGNATURES)
+
 Register a new VLR data type `type` by associating it with an official `user_id` and set of `record_ids` 
 """
 macro register_vlr_type(type, user_id, record_ids)
     return quote
+        this_record_ids = $(esc(record_ids))
+        
         # restrict types for inputs
         if !($(esc(type)) isa DataType) && !($(esc(type)) isa UnionAll)
             throw(AssertionError("Type must be a DataType, not $(typeof($(esc(type))))"))
         end
+        
         if !($(esc(user_id)) isa AbstractString)
             throw(AssertionError("User ID must be a String, not $(typeof($(esc(user_id))))"))
         elseif Base.sizeof($(esc(user_id))) > 16
             throw(AssertionError("User ID must be at most 16 bytes in length! Got $(Base.sizeof($(esc(user_id)))) bytes"))
         end
-        if !(($(esc(record_ids))) isa AbstractVector{<:Integer})
+        
+        if !(this_record_ids isa AbstractVector{<:Integer})
             # if we've only entered a single number, put it in an array and carry on
-            if $(esc(record_ids)) isa Integer
-                record_ids = [$(esc(record_ids))]
+            if this_record_ids isa Integer
+                this_record_ids = [this_record_ids]
             else
-                throw(AssertionError("Record IDs must be a vector of Integers, not $(typeof($(esc(record_ids))))"))
+                throw(AssertionError("Record IDs must be a vector of Integers, not $(typeof(this_record_ids))"))
             end
         end 
-        LASDatasets.official_record_ids(::Type{$(esc(type))}) = $(esc(record_ids))
+
+        LASDatasets.official_record_ids(::Type{$(esc(type))}) = this_record_ids
         LASDatasets.official_user_id(::Type{$(esc(type))}) = $(esc(user_id))
-        global LASDatasets._VLR_TYPE_MAP[($(esc(user_id)), $(esc(record_ids)))] = $(esc(type))
     end
 end
 
@@ -174,23 +210,6 @@ By default this will call `Base.write`, but for more specific write methods this
 """
 function write_vlr_data(io::IO, data::TData) where TData
     return write(io, data)
-end
-
-"""
-    $(TYPEDSIGNATURES)
-
-Get the data type associated with a particular `user_id` and `record_id`. 
-This is used to automatically parse VLR data types on reading
-"""
-function data_type_from_ids(user_id::String, record_id::Integer)
-    matched_type = Vector{UInt8}
-    for k ∈ keys(LASDatasets._VLR_TYPE_MAP)
-        if (user_id == k[1]) && (record_id ∈ k[2])
-            matched_type = LASDatasets._VLR_TYPE_MAP[k]
-            break
-        end
-    end
-    return matched_type
 end
 
 function Base.read(io::IO, ::Type{LasVariableLengthRecord}, extended::Bool=false)
