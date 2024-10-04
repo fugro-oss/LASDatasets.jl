@@ -68,7 +68,7 @@ Base.write(io::IO, info::SpatialInfo) = write_struct(io, info)
 
 const DEFAULT_SPATIAL_INFO = SpatialInfo(AxisInfo(POINT_SCALE, POINT_SCALE, POINT_SCALE), AxisInfo(0.0, 0.0, 0.0), AxisInfo(Range(Inf, -Inf), Range(Inf, -Inf), Range(Inf, -Inf)))
 
-function bounding_box(points::Vector{SVector{3, T}}) where {T <: Real}
+function bounding_box(points::AbstractVector{SVector{3, T}}) where {T <: Real}
     x_min = typemax(T)
     x_max = typemin(T)
     y_min = typemax(T)
@@ -103,7 +103,7 @@ function bounding_box(points::Vector{SVector{3, T}}) where {T <: Real}
     return (; xmin = x_min, ymin = y_min, zmin = z_min, xmax = x_max, ymax = y_max, zmax = z_max)
 end
 
-function get_spatial_info(points::Vector{SVector{3, T}}; scale::T = T(POINT_SCALE)) where {T <: Real}
+function get_spatial_info(points::AbstractVector{SVector{3, T}}; scale::T = T(POINT_SCALE)) where {T <: Real}
     bb = bounding_box(points)
 
     x_offset = determine_offset(bb.xmin, bb.xmax, scale)
