@@ -204,18 +204,24 @@ function read_vlr_data(io::IO, ::Type{OGC_WKT}, nb::Integer)
 end
 
 function OGC_WKT(wkt_string::String, nb::Integer = sizeof(wkt_string))
-    # try and parse the wkt string
-    src = missing
-    unit = vert_unit = missing
+    # need to scope these here so we can access them outside the try/catch
+    unit = missing
+    vert_unit = missing
     try
-        src = importWKT(replace(wkt_string, '\0' => ""))
+        # try and parse the wkt string into a PROJ string to extract coordinate conversion info
+        crs = Proj.CRS(replace(wkt_string, '\0' => ""))
 
-        proj_str = toPROJ4(src)
+        # convert it into a PROJ-formatted string
+        proj_str = Proj.GFT.ProjString(crs).val
 
+        # grab the horizontal units out
         units = split(proj_str)[findall(s -> startswith(s, "+units="), split(proj_str))]
     
+        # need to do a sanity check here on the number of horizontal units we get
         if length(units) == 1
             unit = String(split(units[1], "=")[2])
+
+            # can only have a vertical unit if we've found a horizontal one
             vert_units = split(proj_str)[findall(s -> startswith(s, "+vunits="), split(proj_str))]
     
             vert_unit = unit
