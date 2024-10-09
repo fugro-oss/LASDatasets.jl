@@ -1,6 +1,5 @@
 module LASDatasets
 
-using ArchGDAL: importWKT, toPROJ4
 using BufferedStreams
 using ColorTypes
 using Dates
@@ -11,6 +10,7 @@ using LAStools_jll
 using PackedReadWrite
 import Pkg.Types: read_project
 using Printf
+using Proj
 using StaticArrays
 using StructArrays
 using TypedTables
