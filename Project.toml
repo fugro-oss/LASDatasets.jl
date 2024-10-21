@@ -21,7 +21,7 @@ TypedTables = "9d95f2ec-7b3d-5a63-8d20-e2491e220bb9"
 
 [compat]
 BufferedStreams = "1"
-ColorTypes = "0.11"
+ColorTypes = "0.11, 0.12"
 DocStringExtensions = "0.9"
 FileIO = "1"
 FixedPointNumbers = "0.8"
