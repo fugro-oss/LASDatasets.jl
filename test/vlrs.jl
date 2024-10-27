@@ -136,5 +136,50 @@
         write(io, vlr)
         seek(io, 0)
         @test read(io, LasVariableLengthRecord) == vlr
+
+        # if we haven't registered a VLR type for a struct, we should only read raw bytes back out
+        struct Thing
+            a::Int
+
+            b::Float64
+        end
+
+        Base.:(==)(t1::Thing, t2::Thing) = (t1.a == t2.a) && (t1.b == t2.b)
+
+        function Base.write(io::IO, thing::Thing)
+            write(io, thing.a)
+            write(io, thing.b)
+        end
+
+        function Base.read(io::IO, ::Type{Thing})
+            a = read(io, Int)
+            b = read(io, Float64)
+            return Thing(a, b)
+        end
+
+        thing = Thing(1, 2.0)
+        # get the bytes for this thing
+        io = IOBuffer()
+        write(io, thing)
+        seek(io, 0)
+        bytes = read(io)
+
+        # create a VLR - should be able to write it but can't parse it back to a struct if we haven't registered a type
+        vlr = LasVariableLengthRecord("Thing", 0, "Can't parse!", thing)
+        
+        # make sure we can save and load
+        io = IOBuffer()
+        write(io, vlr)
+        seek(io, 0)
+        out_vlr = read(io, LasVariableLengthRecord)
+        @test get_data(out_vlr) == bytes 
+
+        # if we register a type it should be fine
+        @register_vlr_type Thing "Thing" 0
+
+        io = IOBuffer()
+        write(io, vlr)
+        seek(io, 0)
+        @test read(io, LasVariableLengthRecord) == vlr
     end
 end
