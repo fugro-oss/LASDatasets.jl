@@ -1,7 +1,7 @@
 name = "LASDatasets"
 uuid = "cc498e2a-d443-4943-8f26-2a8a0f3c7cdb"
 authors = ["BenCurran98 <b.curran@fugro.com>"]
-version = "0.3.0"
+version = "0.3.1"
 
 [deps]
 BufferedStreams = "e1450e63-4bb3-523b-b2a4-4ffa8c0fd77d"
@@ -21,7 +21,7 @@ TypedTables = "9d95f2ec-7b3d-5a63-8d20-e2491e220bb9"
 
 [compat]
 BufferedStreams = "1"
-ColorTypes = "0.11"
+ColorTypes = "0.11, 0.12"
 DocStringExtensions = "0.9"
 FileIO = "1"
 FixedPointNumbers = "0.8"
