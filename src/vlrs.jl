@@ -129,6 +129,7 @@ official_record_ids(::Type{TData}) where TData = error("Official record IDs not 
 
 Get the data type associated with a particular `user_id` and `record_id`. 
 This is used to automatically parse VLR data types on reading
+**NOTE**: If the user and record ID combination hasn't been registered, will default to `Vector{UInt8}` and the *VLR* data will be returned as raw bytes.
 """
 function data_type_from_ids(user_id::String, record_id::Integer)
     registered_vlr_types = get_all_vlr_types()
@@ -139,7 +140,9 @@ function data_type_from_ids(user_id::String, record_id::Integer)
         end
     end
 
-    error("Can't find VLR data type to parse for user ID $(user_id) and record ID $(record_id)")
+    # if we can't find a registered type, just read it out as a Byte Vector
+    @warn "Can't find VLR data type to parse for user ID $(user_id) and record ID $(record_id) - reading as raw bytes"
+    return Vector{UInt8}
 end
 
 function get_all_vlr_types()
