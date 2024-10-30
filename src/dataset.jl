@@ -174,6 +174,16 @@ Get the unit factor conversion that was applied to this dataset when ingested
 """
 get_unit_conversion(las::LASDataset) = las.unit_conversion
 
+"""
+    $(TYPEDSIGNATURES)
+
+Update the offset (in Bytes) to the first EVLR in a `LASDataset` `las`
+"""
+function update_evlr_offset!(las::LASDataset)
+    header = get_header(las)
+    header.evlr_start = point_data_offset(header) + (number_of_points(header) * point_record_length(header))
+end
+
 function Base.show(io::IO, las::LASDataset)
     println(io, "LAS Dataset")
     println(io, "\tNum Points: $(length(get_pointcloud(las)))")
@@ -239,13 +249,14 @@ function add_vlr!(las::LASDataset, vlr::LasVariableLengthRecord)
         push!(get_evlrs(las), vlr)
         if number_of_evlrs(header) == 1
             # if this is our first EVLR, need to set the EVLR offset to point to the correct location
-            header.evlr_start = point_data_offset(header) + (number_of_points(header) * point_record_length(header))
+            update_evlr_offset!(header)
         end
     else
         set_num_vlr!(header, number_of_vlrs(header) + 1)
         push!(get_vlrs(las), vlr)
         # make sure to increase the point offset since we're cramming another VLR before the points
         header.data_offset += sizeof(vlr)
+        update_evlr_offset!(header)
     end
 end
 
@@ -326,6 +337,8 @@ function add_column!(las::LASDataset, column::Symbol, values::AbstractVector{T})
     else
         add_extra_bytes!(las, column, T, extra_bytes_vlr)
     end
+    # make sure we keep our offset to our first EVLR consistent now we've crammed more data in
+    update_evlr_offset!(las)
     nothing
 end
 
