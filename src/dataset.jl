@@ -179,10 +179,11 @@ get_unit_conversion(las::LASDataset) = las.unit_conversion
 
 Update the offset (in Bytes) to the first EVLR in a `LASDataset` `las`
 """
-function update_evlr_offset!(las::LASDataset)
-    header = get_header(las)
+function update_evlr_offset!(header::LasHeader)
     header.evlr_start = point_data_offset(header) + (number_of_points(header) * point_record_length(header))
 end
+
+update_evlr_offset!(las::LASDataset) = update_evlr_offset!(get_header(las))
 
 function Base.show(io::IO, las::LASDataset)
     println(io, "LAS Dataset")
