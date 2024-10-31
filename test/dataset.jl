@@ -149,7 +149,8 @@
     @test length(evlrs) == 1
     @test number_of_evlrs(header) == 1
     @test evlrs[1] == long_comment
-    @test evlr_start(header) > 0
+    # make sure the offset makes sense
+    @test evlr_start(header) == point_data_offset(header) + (number_of_points(header) * point_record_length(header))
     # we can add a new comment on top of this one
     new_commment = LasVariableLengthRecord("Comment", 100, "This is a new comment", Comment(String(rand(UInt8, 2^8))), true)
     add_vlr!(las, new_commment)
@@ -165,6 +166,13 @@
     @test get_description(superseded_comment) == get_description(long_comment)
     @test get_data(superseded_comment) == get_data(long_comment)
     @test is_extended(superseded_comment) == is_extended(long_comment)
+    # if we add a regular VLR, we should update the offset to the first EVLR correctly
+    short_comment = LasVariableLengthRecord("Comment", 100, "This is a long comment", Comment(String(rand(UInt8, 10))))
+    add_vlr!(las, short_comment)
+    @test evlr_start(header) == point_data_offset(header) + (number_of_points(header) * point_record_length(header))
+    # and similarly if we add column data it should update properly
+    add_column!(las, :another_column, rand(UInt8, num_points))
+    @test evlr_start(header) == point_data_offset(header) + (number_of_points(header) * point_record_length(header))
     # and finally we can remove it
     remove_vlr!(las, superseded_comment)
     @test number_of_evlrs(get_header(las)) == 1
