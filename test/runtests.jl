@@ -2,9 +2,13 @@ using LASDatasets
 
 using ColorTypes
 using FixedPointNumbers
+using Random
 using StaticArrays
 using Test
 using TypedTables
+
+# fix random seed to avoid random errors
+Random.seed!(0)
 
 include("util.jl")
 include("spatial_info.jl")
