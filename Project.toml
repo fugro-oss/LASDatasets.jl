@@ -1,7 +1,7 @@
 name = "LASDatasets"
 uuid = "cc498e2a-d443-4943-8f26-2a8a0f3c7cdb"
 authors = ["BenCurran98 <b.curran@fugro.com>"]
-version = "0.3.2"
+version = "0.3.3"
 
 [deps]
 BufferedStreams = "e1450e63-4bb3-523b-b2a4-4ffa8c0fd77d"
