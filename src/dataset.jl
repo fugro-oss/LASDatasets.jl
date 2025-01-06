@@ -125,6 +125,26 @@ mutable struct LASDataset
     end
 end
 
+"""
+    $(TYPEDSIGNATURES)
+
+Create a LASDataset from a pointcloud and optionally vlrs/evlrs/user_defined_bytes, 
+NO header required.
+"""
+function LASDataset(pointcloud::Table,
+                    vlrs::Vector{<:LasVariableLengthRecord} = LasVariableLengthRecord[],
+                    evlrs::Vector{<:LasVariableLengthRecord} = LasVariableLengthRecord[],
+                    user_defined_bytes::Vector{UInt8} = UInt8[])
+
+    point_format = get_point_format(pointcloud)
+    header = LasHeader(; 
+        las_version = lasversion_for_point(point_format), 
+        data_format_id = UInt8(get_point_format_id(point_format)),
+        data_record_length = UInt16(byte_size(point_format))
+    )
+    make_consistent_header!(header, pointcloud, vlrs, evlrs, user_defined_bytes)
+    return LASDataset(header, pointcloud, vlrs, evlrs, user_defined_bytes)
+end
 
 """
     $(TYPEDSIGNATURES)
