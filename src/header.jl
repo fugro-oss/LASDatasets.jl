@@ -476,6 +476,18 @@ spatial_info(h::LasHeader) = h.spatial_info
 """
     $(TYPEDSIGNATURES)
 
+Get the scale for point positions in a LAS file from a header `h`. Checks consistent scale for ALL axes.
+"""
+function scale(h::LasHeader) 
+
+    @assert (h.spatial_info.scale.x == h.spatial_info.scale.y) && (h.spatial_info.scale.y == h.spatial_info.scale.z) "We expect all axes to be scaled similarly"
+    
+    return h.spatial_info.scale.x
+end
+
+"""
+    $(TYPEDSIGNATURES)
+
 Get the number of return channels in a LAS file from a header `h`
 """
 num_return_channels(h::LasHeader) = las_version(h) ≥ v"1.4" ? 15 : 5
@@ -792,6 +804,7 @@ function make_consistent_header!(header::LasHeader,
     point_data_offset = header_size + vlr_size + length(user_defined_bytes)
     
     set_point_data_offset!(header, point_data_offset)
+    set_spatial_info!(header, get_spatial_info(pointcloud; scale = scale(header)))
     
     set_point_record_count!(header, length(pointcloud))
     returns = (:returnnumber ∈ columnnames(pointcloud)) ? pointcloud.returnnumber : ones(Int, length(pointcloud))

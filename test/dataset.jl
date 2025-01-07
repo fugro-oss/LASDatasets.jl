@@ -44,6 +44,12 @@
     # check equality if we create two of the same dataset
     other_las = LASDataset(deepcopy(header), deepcopy(pc), LasVariableLengthRecord[], LasVariableLengthRecord[], UInt8[])
     @test other_las == las
+
+    # test constructor with pc Only
+    h = LasHeader(; las_version = v"1.1", data_format_id = UInt8(1), data_record_length = UInt16(28))
+    LASDatasets.make_consistent_header!(h, pc, LasVariableLengthRecord[], LasVariableLengthRecord[], UInt8[])
+    las = LASDataset(h, pc, LasVariableLengthRecord[], LasVariableLengthRecord[], UInt8[])
+    @test las == LASDataset(deepcopy(pc))
     
     # now try incorporating some user fields
     spicy_pc = Table(pc, thing = rand(num_points), other_thing = rand(Int16, num_points))
