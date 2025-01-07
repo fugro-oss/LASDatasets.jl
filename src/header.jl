@@ -476,11 +476,11 @@ spatial_info(h::LasHeader) = h.spatial_info
 """
     $(TYPEDSIGNATURES)
 
-Get the scale for point positions in a LAS file from a header `h`. Checks consistent scale for ALL axis.
+Get the scale for point positions in a LAS file from a header `h`. Checks consistent scale for ALL axes.
 """
 function scale(h::LasHeader) 
 
-    @assert (h.spatial_info.scale.x == h.spatial_info.scale.y) && (h.spatial_info.scale.y == h.spatial_info.scale.z) "We expect all axis to be scale similarly"
+    @assert (h.spatial_info.scale.x == h.spatial_info.scale.y) && (h.spatial_info.scale.y == h.spatial_info.scale.z) "We expect all axes to be scaled similarly"
     
     return h.spatial_info.scale.x
 end
