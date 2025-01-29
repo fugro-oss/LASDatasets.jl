@@ -495,26 +495,45 @@ num_return_channels(h::LasHeader) = las_version(h) ≥ v"1.4" ? 15 : 5
 """
     $(TYPEDSIGNATURES)
 
-Get the LAS version in a header `h`
+Set the LAS specification version in a header `h` to version `v`
 """
 function set_las_version!(h::LasHeader, v::VersionNumber)
-    if any([
-        (v ≤ v"1.1") && (get_point_format_id(point_format(h)) ≥ 2),
-        (v ≤ v"1.2") && (get_point_format_id(point_format(h)) ≥ 4),
-        (v ≤ v"1.3") && (get_point_format_id(point_format(h)) ≥ 5),
-        (v ≤ v"1.4") && (get_point_format_id(point_format(h)) ≥ 11),
-        v ≥ v"1.5"
-    ])
-        error("Incompatible LAS version $(v) with point format $(point_format(h))")
-    end
+    _point_format_version_consistent(v, point_format(h))
     old_version = deepcopy(las_version(h))
     h.las_version = v
     h.header_size = get_header_size_from_version(v)
     h.data_offset += (h.header_size - get_header_size_from_version(old_version))
-    if (v ≥ v"1.4") && (get_point_format_id(point_format(h)) ≤ 5)
-        h.record_count = UInt64(h.legacy_record_count)
-        h.point_return_count = ntuple(i -> i ≤ 5 ? h.legacy_point_return_count[i] : 0, 15)
+    set_point_record_count!(h, number_of_points(h))
+    set_number_of_points_by_return!(h, get_number_of_points_by_return(h))
+    return nothing
+end
+
+function _point_format_version_consistent(v::VersionNumber, ::Type{TPoint}) where {TPoint <: LasPoint}
+    point_format_id = get_point_format_id(TPoint)
+    if any([
+        (v ≤ v"1.1") && (point_format_id ≥ 2),
+        (v ≤ v"1.2") && (point_format_id ≥ 4),
+        (v ≤ v"1.3") && (point_format_id ≥ 5),
+        (v ≤ v"1.4") && (point_format_id ≥ 11),
+        v ≥ v"1.5"
+    ])
+        error("Incompatible LAS version $(v) with point format $(point_format_id)")
     end
+end
+
+"""
+    $(TYPEDSIGNATURES)
+
+Set the point format in a header `h` to a new value, `TPoint`
+"""
+function set_point_format!(h::LasHeader, ::Type{TPoint}) where {TPoint <: LasPoint}
+    v = las_version(h)
+    _point_format_version_consistent(v, TPoint)
+    old_format_id = h.data_format_id
+    h.data_format_id = get_point_format_id(TPoint)
+    h.data_record_length += (byte_size(TPoint) - byte_size(LasPoint{Int(old_format_id)}))
+    set_point_record_count!(h, number_of_points(h))
+    set_number_of_points_by_return!(h, get_number_of_points_by_return(h))
 end
 
 """
@@ -554,13 +573,16 @@ end
 Set the number of points in a LAS file with a header `header`
 """
 function set_point_record_count!(header::LasHeader, num_points::Integer)
-    if las_version(header) == v"1.4"
+    if (las_version(header) == v"1.4")
         @assert num_points ≤ typemax(UInt64) "Can't have more than $(typemax(UInt64)) points for LAS v1.4"
-        header.record_count = UInt64(num_points)
     else
         @assert num_points ≤ typemax(UInt32) "Can't have more than $(typemax(UInt32)) points for LAS v1.0-1.3"
+    end
+    header.record_count = UInt64(num_points)
+    if get_point_format_id(point_format(header)) ≤ 5
         header.legacy_record_count = UInt32(num_points)
     end
+    return nothing
 end
 
 """
@@ -725,10 +747,12 @@ function set_number_of_points_by_return!(header::LasHeader, points_per_return::N
     return_limit = las_version(header) ≥ v"1.4" ? typemax(UInt64) : typemax(UInt32)
     @assert all(points_per_return .≤ return_limit) "Maximum allowed points per return count is $return_limit"
     @assert N == num_return_channels(header) "Number of returns $N doesn't match what's in header $(num_return_channels(header))"
-    if las_version(header) ≥ v"1.4"
-        header.point_return_count = points_per_return
+    # note - internally, we store the point return count up to 15 places, even if the version spec only needs 5 - saves having to redefine field types for header
+    header.point_return_count = ntuple(i -> i ≤ N ? points_per_return[i] : 0, 15)
+    if get_point_format_id(point_format(header)) ≤ 5
+        header.legacy_point_return_count = ntuple(i -> i ≤ N ? points_per_return[i] : 0, 5)
     else
-        header.legacy_point_return_count = points_per_return
+        header.legacy_point_return_count = (0, 0, 0, 0, 0)
     end
 end
 

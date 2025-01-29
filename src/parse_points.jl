@@ -6,8 +6,8 @@ $(METHODLIST)
 function laspoint end
 laspoint(::Type{TPoint}, p::TPoint, xyz::SpatialInfo) where TPoint = p
 
-byte_size(point::TPoint) where {N, TPoint <: LasPoint{N}} = byte_size(TPoint)
-byte_size(::Type{TPoint}) where {N, TPoint <: LasPoint{N}} = sum(sizeof.(eltype.(fieldtypes(TPoint))))
+
+byte_size(::Type{TPoint}) where {TPoint <: LasPoint} = sum(sizeof.(eltype.(fieldtypes(get_point_format(TPoint)))))
 
 byte_size(vector::Type{SVector{N,T}}) where {N,T} = sizeof(T) * N
 
