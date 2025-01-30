@@ -193,17 +193,20 @@
 
     # we should be able to add new points in too
     new_points = Table(
+        id = length(pc):(length(pc) + 10),
         position = rand(SVector{3, Float64}, 10),
         classification = rand(UInt8, 10),
         gps_time = rand(10),
-        id = length(pc):(length(pc) + 10),
         overlap = falses(10)
     )
     add_points!(las, new_points)
     pointcloud = get_pointcloud(las)
     # check the point contents to make sure our new points are there
     @test length(pointcloud) == 110
-    @test pointcloud[101:end] == new_points
+    # equality checks are annoying when the column order gets switched internally, so check each column individually
+    for col ∈ columnnames(new_points)
+        @test getproperty(pointcloud, col)[101:end] == getproperty(new_points, col)
+    end
     # also make sure our header information is correctly set
     @test number_of_points(las) == 110
     @test spatial_info(las) == LASDatasets.get_spatial_info(pointcloud)
