@@ -371,7 +371,6 @@ function add_column!(las::LASDataset, column::Symbol, values::AbstractVector{T})
     # now actually write the values to the column
     Base.setproperty!(pointcloud, column, values)
     
-    
     return nothing
 end
 

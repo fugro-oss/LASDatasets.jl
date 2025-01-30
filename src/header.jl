@@ -766,6 +766,7 @@ function set_number_of_points_by_return!(header::LasHeader, points_per_return::N
     else
         header.legacy_point_return_count = (0, 0, 0, 0, 0)
     end
+    return nothing
 end
 
 """
