@@ -76,15 +76,12 @@ struct LASDataset
 
                 # grab information about the existing ExtraBytes VLRs - need to see if we need to update them or not
                 extra_bytes_vlr = extract_vlr_type(vlrs, LAS_SPEC_USER_ID, ID_EXTRABYTES)
-                @assert length(extra_bytes_vlr) ≤ 1 "Found multiple Extra Bytes VLRs in LAS file!"
-                if isempty(extra_bytes_vlr)
+                if isnothing(extra_bytes_vlr)
                     extra_bytes_vlr = LasVariableLengthRecord(LAS_SPEC_USER_ID, ID_EXTRABYTES, "Extra Bytes", ExtraBytesCollection())
                     # make sure we add the VLR to our collection and update any header info
                     push!(vlrs, extra_bytes_vlr)
                     header.n_vlr += 1
                     header.data_offset += sizeof(extra_bytes_vlr)
-                else
-                    extra_bytes_vlr = extra_bytes_vlr[1]
                 end
                 extra_bytes_data = get_extra_bytes(get_data(extra_bytes_vlr))
                 user_field_names = Symbol.(name.(extra_bytes_data))
@@ -256,12 +253,16 @@ Add a `vlr` into the set of VLRs in a LAS dataset `las`.
 Note that this will modify the header content of `las`, including updating its LAS version to v1.4 if `vlr` is extended
 """
 function add_vlr!(las::LASDataset, vlr::LasVariableLengthRecord)
-    if is_extended(vlr) && isempty(get_evlrs(las))
+    if is_extended(vlr) && las_version(las) < v"1.4"
         # evlrs only supported in LAS 1.4
+        @warn "Upgrading LAS spec version to 1.4.0 from $(las_version(las)) to support use of EVLRs"
         set_las_version!(get_header(las), v"1.4")
     end
 
     header = get_header(las)
+
+    existing_vlr = extract_vlr_type(get_vlrs(las), get_user_id(vlr), get_record_id(vlr))
+    @assert isnothing(existing_vlr) "We already have a VLR with user ID $(get_user_id(vlr)) and record ID $(get_record_id(vlr)) in the las dataset!"
     
     if is_extended(vlr)
         set_num_evlr!(header, number_of_evlrs(header) + 1)
@@ -337,14 +338,11 @@ function add_column!(las::LASDataset, column::Symbol, values::AbstractVector{T})
         end
         las.header.data_record_length += sizeof(T)
         vlrs = get_vlrs(las)
-        extra_bytes_vlrs = extract_vlr_type(vlrs, LAS_SPEC_USER_ID, ID_EXTRABYTES)
-        @assert length(extra_bytes_vlrs) ≤ 1 "Found $(length(extra_bytes_vlrs)) Extra Bytes VLRs when we can only have a max of 1"
-        if isempty(extra_bytes_vlrs)
+        extra_bytes_vlr = extract_vlr_type(vlrs, LAS_SPEC_USER_ID, ID_EXTRABYTES)
+        if isnothing(extra_bytes_vlr)
             extra_bytes_vlr = LasVariableLengthRecord(LAS_SPEC_USER_ID, ID_EXTRABYTES, "Extra Bytes Records", ExtraBytesCollection())
             # make sure we add it to the dataset to account for offsets in the header etc.
             add_vlr!(las, extra_bytes_vlr)
-        else
-            extra_bytes_vlr = extra_bytes_vlrs[1]
         end
         if T <: SVector
             # user field arrays have to be saved as sequential extra bytes records with names of the form "column [i]" (zero indexing encouraged)

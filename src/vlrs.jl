@@ -259,9 +259,14 @@ is_srs(vlr::LasVariableLengthRecord) = vlr.record_id in (
 """
     $(TYPEDSIGNATURES)
 
-Extract all VLRs with a `user_id` and `record_id` from a collection of VLRs, `vlrs`
+Extract the VLR with a `user_id` and `record_id` from a collection of VLRs, `vlrs`
 """
 function extract_vlr_type(vlrs::Vector{<:LasVariableLengthRecord}, user_id::String, record_id::Integer)
-    matches_ids = findall(vlr -> (get_user_id(vlr) == user_id) && (get_record_id(vlr) == record_id), vlrs)
-    return vlrs[matches_ids]
+    # there should only ever be 1 VLR that has a particular user/record ID combination
+    matches_ids = findfirst(vlr -> (get_user_id(vlr) == user_id) && (get_record_id(vlr) == record_id), vlrs)
+    if isnothing(matches_ids)
+        return nothing
+    else
+        return vlrs[matches_ids]
+    end
 end
