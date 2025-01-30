@@ -872,5 +872,10 @@ function _consolidate_point_header_info!(header::LasHeader, pointcloud::Abstract
     returns = (:returnnumber ∈ columnnames(pointcloud)) ? pointcloud.returnnumber : ones(Int, length(pointcloud))
     points_per_return = ntuple(r -> count(returns .== r), num_return_channels(header))
     set_number_of_points_by_return!(header, points_per_return)
+    if :synthetic ∈ columnnames(pointcloud)
+        set_synthetic_return_numbers_bit!(header)
+    else
+        unset_synthetic_return_numbers_bit!(header)
+    end
     return nothing
 end
