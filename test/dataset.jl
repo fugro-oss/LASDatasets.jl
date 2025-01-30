@@ -182,6 +182,12 @@
     @test number_of_evlrs(get_header(las)) == 1
     @test get_evlrs(las) == [new_commment]
 
-    # las = LASDataset(pc)
+    # test modifying point formats and versions
+    las = LASDataset(pc)
+
+    # if we add a LAS column that isn't covered by the current format, the point format (and possibly LAS version) should be updated in the header
+    add_column!(las, :overlap, falses(length(pc)))
+    @test point_format(get_header(las)) == LasPoint6
+    @test las_version(get_header(las)) == v"1.4"
     
 end

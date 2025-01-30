@@ -206,7 +206,7 @@ function Base.show(io::IO, las::LASDataset)
     println(io, "\tNum Points: $(length(get_pointcloud(las)))")
     println(io, "\tPoint Format: $(point_format(get_header(las)))")
     all_cols = columnnames(las.pointcloud)
-    is_las = all_cols .∈ Ref(RECOGNISED_LAS_COLUMNS)
+    is_las = collect(all_cols .∈ Ref(RECOGNISED_LAS_COLUMNS))
     println(io, "\tPoint Channels: $(all_cols[is_las])")
     if any(.!is_las)
         println(io, "\tUser Fields: $(all_cols[.!is_las])")
@@ -326,11 +326,11 @@ Add a column with name `column` and set of `values` to a `las` dataset
 """
 function add_column!(las::LASDataset, column::Symbol, values::AbstractVector{T}) where T
     @assert length(values) == length(las.pointcloud) "Column size $(length(values)) inconsistent with number of points $(length(las.pointcloud))"
-    check_user_type(T)
     pointcloud = get_pointcloud(las)
     
     is_user = column ∉ RECOGNISED_LAS_COLUMNS
     if is_user 
+        check_user_type(T)
         # need to update our header information and VLRs to track this user column
         if column ∈ columnnames(pointcloud)
             las.header.data_record_length -= sizeof(eltype(getproperty(pointcloud, column)))
@@ -359,10 +359,10 @@ function add_column!(las::LASDataset, column::Symbol, values::AbstractVector{T})
         update_evlr_offset!(las)
     elseif column ∉ has_columns(point_format(get_header(las)))
         # we're adding a new LAS column, which will necessitate changing the point format (and possibly the version)
-        las_cols = filter(c -> c ∈ RECOGNISED_LAS_COLUMNS, columnnames(pointcloud))
+        las_cols = filter(c -> c ∈ RECOGNISED_LAS_COLUMNS, collect(columnnames(pointcloud)))
         push!(las_cols, column)
         new_format = get_point_format(las_cols)
-        @warn "Adding column $(column) to LAS dataset requires changing the point format to $(new_format), be warned!"
+        @warn "Changing point format to $(new_format) to allow the inclusion of LAS column $(column)"
         
         set_point_format!(las, new_format)
     end

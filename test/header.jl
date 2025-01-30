@@ -44,20 +44,14 @@
     # the point return counts should match the legacy counts here
     @test get_number_of_points_by_return(header) == (100, 0, 0, 0, 0)
 
-    # we shouldn't be able to set an invalid point format
-    @test_throws ErrorException set_point_format!(header, LasPoint10)
-
-    # and we should be able to set the version back again
-    set_las_version!(header, v"1.4")
+    # if we request setting to a higher point format than the LAS version in the header supports, the version should be updated to the minimal compatible one
+    set_point_format!(header, LasPoint7)
     @test las_version(header) == v"1.4"
     @test header_size(header) == 375
     @test point_data_offset(header) == 376
-
     
-    # but if we change to a newer LAS point format, we should get the same return counts, but set the legacy counts internally to 0
-    set_point_format!(header, LasPoint7)
+    # now, we should get the same return counts, but set the legacy counts internally to 0
     @test get_number_of_points_by_return(header) == (100, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
-    # and the legacy counts should be 0
     @test header.legacy_point_return_count == (0, 0, 0, 0, 0)
 
     set_point_format!(header, LasPoint1)

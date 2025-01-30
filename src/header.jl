@@ -528,8 +528,15 @@ Set the point format in a header `h` to a new value, `TPoint`
 """
 function set_point_format!(h::LasHeader, ::Type{TPoint}) where {TPoint <: LasPoint}
     v = las_version(h)
-    _point_format_version_consistent(v, TPoint)
-    old_format_id = h.data_format_id
+    minimal_required_version = lasversion_for_point(TPoint)
+    old_format = point_format(h)
+    old_format_id = get_point_format_id(old_format)
+    # make sure that the LAS version in the header is consistent with the point format we want - upgrade if necessary, but let the user know
+    if v < minimal_required_version
+        @warn "Updating LAS version from $(v) to $(minimal_required_version) to accomodate changing point format from $(old_format) to $(TPoint)"
+        set_las_version!(h, minimal_required_version)
+    end
+    _point_format_version_consistent(las_version(h), TPoint)
     h.data_format_id = get_point_format_id(TPoint)
     h.data_record_length += (byte_size(TPoint) - byte_size(LasPoint{Int(old_format_id)}))
     set_point_record_count!(h, number_of_points(h))
