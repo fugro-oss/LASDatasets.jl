@@ -435,6 +435,20 @@ function set_point_format!(las::LASDataset, ::Type{TPoint}) where {TPoint <: Las
     set_point_format!(get_header(las), TPoint)
 end
 
+"""
+    $(TYPEDSIGNATURES)
+
+Add a collection of `points` to a `LASDataset`, `las`. Updates header information to ensure dataset consistency
+"""
+function add_points!(las::LASDataset, points::AbstractVector{<:NamedTuple})
+    pc = get_pointcloud(las)
+    @assert all(columnnames(points) .∈ Ref(columnnames(pc))) "Point fields being appended $(columnnames(points)) must match those present in the dataset, $(columnnames(pc))"
+    append!(pc, points)
+    # make sure we update the header info too!
+    _consolidate_point_header_info!(get_header(las), pc)
+    return nothing
+end
+
 # plumb through header util functions to act on a LASDataset for convenience
 for header_func ∈ (
     :las_version,
@@ -452,7 +466,7 @@ for header_func ∈ (
     :number_of_vlrs,
     :number_of_evlrs,
     :evlr_start,
-    :spatrial_info,
+    :spatial_info,
     :scale,
     :num_return_channels,
     :is_standard_gps,

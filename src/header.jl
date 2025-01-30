@@ -836,12 +836,8 @@ function make_consistent_header!(header::LasHeader,
     point_data_offset = header_size + vlr_size + length(user_defined_bytes)
     
     set_point_data_offset!(header, point_data_offset)
-    set_spatial_info!(header, get_spatial_info(pointcloud; scale = scale(header)))
     
-    set_point_record_count!(header, length(pointcloud))
-    returns = (:returnnumber ∈ columnnames(pointcloud)) ? pointcloud.returnnumber : ones(Int, length(pointcloud))
-    points_per_return = ntuple(r -> count(returns .== r), num_return_channels(header))
-    set_number_of_points_by_return!(header, points_per_return)
+    _consolidate_point_header_info!(header, pointcloud)
 
     if !isempty(vlrs)
         set_num_vlr!(header, length(vlrs))
@@ -865,4 +861,16 @@ function make_consistent_header!(header::LasHeader,
         # don't want waveform bits set for point formats that don't have waveform data
         unset_waveform_bits!(header)
     end
+
+    return nothing
+end
+
+function _consolidate_point_header_info!(header::LasHeader, pointcloud::AbstractVector{<:NamedTuple})
+    set_spatial_info!(header, get_spatial_info(pointcloud; scale = scale(header)))
+    
+    set_point_record_count!(header, length(pointcloud))
+    returns = (:returnnumber ∈ columnnames(pointcloud)) ? pointcloud.returnnumber : ones(Int, length(pointcloud))
+    points_per_return = ntuple(r -> count(returns .== r), num_return_channels(header))
+    set_number_of_points_by_return!(header, points_per_return)
+    return nothing
 end

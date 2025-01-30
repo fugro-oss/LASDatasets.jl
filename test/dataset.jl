@@ -184,10 +184,26 @@
 
     # test modifying point formats and versions
     las = LASDataset(pc)
-
     # if we add a LAS column that isn't covered by the current format, the point format (and possibly LAS version) should be updated in the header
     add_column!(las, :overlap, falses(length(pc)))
     @test point_format(get_header(las)) == LasPoint6
     @test las_version(get_header(las)) == v"1.4"
+
+    # we should be able to add new points in too
+    new_points = Table(
+        position = rand(SVector{3, Float64}, 10),
+        classification = rand(UInt8, 10),
+        gps_time = rand(10),
+        id = length(pc):(length(pc) + 10),
+        overlap = falses(10)
+    )
+    add_points!(las, new_points)
+    pointcloud = get_pointcloud(las)
+    # check the point contents to make sure our new points are there
+    @test length(pointcloud) == 110
+    @test pointcloud[101:end] == new_points
+    # also make sure our header information is correctly set
+    @test number_of_points(las) == 110
+    @test spatial_info(las) == LASDatasets.get_spatial_info(pointcloud)
     
 end
