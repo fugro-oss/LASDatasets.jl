@@ -476,14 +476,18 @@ spatial_info(h::LasHeader) = h.spatial_info
 """
     $(TYPEDSIGNATURES)
 
-Get the scale for point positions in a LAS file from a header `h`. Checks consistent scale for ALL axes.
+Get the scale for point positions in a LAS file from a header `h` along an `axis` (x, y or z)
 """
-function scale(h::LasHeader) 
-
-    @assert (h.spatial_info.scale.x == h.spatial_info.scale.y) && (h.spatial_info.scale.y == h.spatial_info.scale.z) "We expect all axes to be scaled similarly"
-    
-    return h.spatial_info.scale.x
+function scale(h::LasHeader, axis::Symbol) 
+    return getproperty(h.spatial_info.scale, axis)
 end
+
+"""
+    $(TYPEDSIGNATURES)
+
+Get the scale for point positions in a LAS file from a header `h` along all axes
+"""
+scale(h::LasHeader) = h.spatial_info.scale
 
 """
     $(TYPEDSIGNATURES)
@@ -804,7 +808,7 @@ function make_consistent_header(pointcloud::AbstractVector{<:NamedTuple},
                                 vlrs::Vector{<:LasVariableLengthRecord}, 
                                 evlrs::Vector{<:LasVariableLengthRecord},
                                 user_defined_bytes::Vector{UInt8},
-                                scale::Real) where {TPoint <: LasPoint}
+                                scale::Union{Real, SVector{3, <:Real}}) where {TPoint <: LasPoint}
     version = lasversion_for_point(point_format)
 
     spatial_info = get_spatial_info(pointcloud; scale = scale)
@@ -866,7 +870,7 @@ function make_consistent_header!(header::LasHeader,
 end
 
 function _consolidate_point_header_info!(header::LasHeader, pointcloud::AbstractVector{<:NamedTuple})
-    set_spatial_info!(header, get_spatial_info(pointcloud; scale = scale(header)))
+    set_spatial_info!(header, get_spatial_info(pointcloud, scale(header)))
     
     set_point_record_count!(header, length(pointcloud))
     returns = (:returnnumber ∈ columnnames(pointcloud)) ? pointcloud.returnnumber : ones(Int, length(pointcloud))

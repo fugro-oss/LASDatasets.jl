@@ -103,28 +103,30 @@ function bounding_box(points::AbstractVector{SVector{3, T}}) where {T <: Real}
     return (; xmin = x_min, ymin = y_min, zmin = z_min, xmax = x_max, ymax = y_max, zmax = z_max)
 end
 
-function get_spatial_info(points::AbstractVector{SVector{3, T}}; scale::T = T(POINT_SCALE)) where {T <: Real}
+get_spatial_info(points::AbstractVector{SVector{3, T}}; scale::T = T(POINT_SCALE)) where {T <: Real} = get_spatial_info(points, AxisInfo{T}(scale, scale, scale))
+get_spatial_info(points::AbstractVector{SVector{3, T}}, scale::SVector{3, T}) where {T <: Real} = get_spatial_info(points, AxisInfo{T}(scale.x, scale.y, scale.z))
+
+function get_spatial_info(points::AbstractVector{SVector{3, T}}, scale::AxisInfo{T}) where {T <: Real}
     bb = bounding_box(points)
 
-    x_offset = determine_offset(bb.xmin, bb.xmax, scale)
-    y_offset = determine_offset(bb.ymin, bb.ymax, scale)
-    z_offset = determine_offset(bb.zmin, bb.zmax, scale)
+    x_offset = determine_offset(bb.xmin, bb.xmax, scale.x)
+    y_offset = determine_offset(bb.ymin, bb.ymax, scale.y)
+    z_offset = determine_offset(bb.zmin, bb.zmax, scale.z)
 
     offset = AxisInfo(x_offset, y_offset, z_offset)
 
-    x_min = scale * round((bb.xmin / scale) - 0.5)
-    y_min = scale * round((bb.ymin / scale) - 0.5)
-    z_min = scale * round((bb.zmin / scale) - 0.5)
-    x_max = scale * round((bb.xmax / scale) + 0.5)
-    y_max = scale * round((bb.ymax / scale) + 0.5)
-    z_max = scale * round((bb.zmax / scale) + 0.5)
-    
-    scale_info = AxisInfo(scale, scale, scale)   
+    x_min = scale.x * round((bb.xmin / scale.x) - 0.5)
+    y_min = scale.y * round((bb.ymin / scale.y) - 0.5)
+    z_min = scale.z * round((bb.zmin / scale.z) - 0.5)
+    x_max = scale.x * round((bb.xmax / scale.x) + 0.5)
+    y_max = scale.y * round((bb.ymax / scale.y) + 0.5)
+    z_max = scale.z * round((bb.zmax / scale.z) + 0.5) 
 
-    return SpatialInfo(scale_info, offset, AxisInfo(Range(x_max, x_min), Range(y_max, y_min), Range(z_max, z_min)))
+    return SpatialInfo(scale, offset, AxisInfo(Range(x_max, x_min), Range(y_max, y_min), Range(z_max, z_min)))
 end
 
-get_spatial_info(pc::AbstractVector{<:NamedTuple}; kwargs...) = get_spatial_info(pc.position; kwargs...)
+get_spatial_info(pc::Union{AbstractVector{<:NamedTuple}, FlexTable}; kwargs...) = get_spatial_info(pc.position; kwargs...)
+get_spatial_info(pc::Union{AbstractVector{<:NamedTuple}, FlexTable}, scale::Union{SVector, AxisInfo}) = get_spatial_info(pc.position, scale)
 
 function determine_offset(min_value, max_value, scale; threshold=10^7)
     s = round(Int64, ((min_value + max_value) / 2) / scale / threshold)
