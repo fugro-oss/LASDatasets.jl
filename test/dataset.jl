@@ -117,9 +117,11 @@
         "Text Area Description", 
         TextAreaDescription("This is the new dataset description")
     )
-    add_vlr!(las, new_desc)
     # mark the old one as superseded
     set_superseded!(las, desc)
+    # and add the new one
+    add_vlr!(las, new_desc)
+    
     vlrs = get_vlrs(las)
     @test length(vlrs) == 3
     @test vlrs[3] == new_desc
