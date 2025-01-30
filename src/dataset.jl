@@ -434,3 +434,39 @@ end
 function set_point_format!(las::LASDataset, ::Type{TPoint}) where {TPoint <: LasPoint}
     set_point_format!(get_header(las), TPoint)
 end
+
+# plumb through header util functions to act on a LASDataset for convenience
+for header_func ∈ (
+    :las_version,
+    :file_source_id,
+    :global_encoding, 
+    :system_id,
+    :software_id,
+    :creation_day_of_year,
+    :creation_year,
+    :header_size,
+    :point_data_offset, 
+    :point_record_length,
+    :point_format,
+    :number_of_points,
+    :number_of_vlrs,
+    :number_of_evlrs,
+    :evlr_start,
+    :spatrial_info,
+    :scale,
+    :num_return_channels,
+    :is_standard_gps,
+    :is_wkt,
+    :set_gps_standard_time_bit!,
+    :is_internal_waveform,
+    :set_waveform_internal_bit!,
+    :set_waveform_external_bit!,
+    :unset_waveform_bits!,
+    :set_synthetic_return_numbers_bit!,
+    :unset_synthetic_return_numbers_bit!,
+    :set_wkt_bit!,
+    :get_number_of_points_by_return,
+    :waveform_record_start
+    )
+    @eval $header_func(las::LASDataset) = $header_func(get_header(las))
+end
