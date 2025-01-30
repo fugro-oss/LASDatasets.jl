@@ -534,6 +534,7 @@ function set_point_format!(h::LasHeader, ::Type{TPoint}) where {TPoint <: LasPoi
     h.data_record_length += (byte_size(TPoint) - byte_size(LasPoint{Int(old_format_id)}))
     set_point_record_count!(h, number_of_points(h))
     set_number_of_points_by_return!(h, get_number_of_points_by_return(h))
+    return nothing
 end
 
 """

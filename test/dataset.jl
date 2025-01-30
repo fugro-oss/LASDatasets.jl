@@ -58,9 +58,7 @@
     this_header = get_header(las)
     @test point_record_length(this_header) == LASDatasets.byte_size(LasPoint1) + 10
     # our user fields should be populated in the dataset
-    @test las._user_data isa FlexTable
-    @test length(las._user_data) == num_points
-    @test sort(collect(columnnames(las._user_data))) == [:other_thing, :thing]
+    @test sort(collect(columnnames(las.pointcloud))) == [:classification, :gps_time, :id, :other_thing, :position, :thing]
     this_pc = get_pointcloud(las)
     @test this_pc.thing == spicy_pc.thing
     @test this_pc.other_thing == spicy_pc.other_thing
@@ -183,4 +181,7 @@
     remove_vlr!(las, superseded_comment)
     @test number_of_evlrs(get_header(las)) == 1
     @test get_evlrs(las) == [new_commment]
+
+    # las = LASDataset(pc)
+    
 end

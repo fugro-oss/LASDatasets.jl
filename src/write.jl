@@ -96,7 +96,10 @@ function write_las(io::IO, las::LASDataset)
     this_point_format = point_format(header)
     xyz = spatial_info(header)
 
-    user_fields = ismissing(las._user_data) ? () : filter(c -> c != :undocumented_bytes, columnnames(las._user_data))
+    cols = collect(columnnames(pc))
+    these_are_las_cols = cols .∈ Ref(RECOGNISED_LAS_COLUMNS)
+    other_cols = cols[.!these_are_las_cols]
+    user_fields = filter(c -> c != :undocumented_bytes, other_cols)
 
     write(io, header)
 

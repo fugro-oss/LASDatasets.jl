@@ -16,9 +16,9 @@ byte_size(vector::Type{SVector{N,T}}) where {N,T} = sizeof(T) * N
 
 Get the minimum point format that is compatible with the contents of a point cloud in a `table`
 """
-function get_point_format(table::AbstractVector{<:NamedTuple})
-    
-    columns = columnnames(table)
+get_point_format(table::AbstractVector{<:NamedTuple}) = get_point_format(columnnames(table))
+
+function get_point_format(columns::Union{AbstractVector{Symbol}, NTuple{N, Symbol}}) where N
 
     # these are the known formats - the ones without wave packets
     columns_per_format = map(n -> has_columns(get_point_format(LasPoint{n})), collect(0:9))
