@@ -365,6 +365,9 @@ function add_column!(las::LASDataset, column::Symbol, values::AbstractVector{T})
         @warn "Changing point format to $(new_format) to allow the inclusion of LAS column $(column)"
         
         set_point_format!(las, new_format)
+
+        # special case - if we're adding synthetic points, need to set the synthetic flag in the header
+        set_synthetic_return_numbers_bit!(las)
     end
 
     # now actually write the values to the column
