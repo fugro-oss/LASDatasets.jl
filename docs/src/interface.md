@@ -70,18 +70,28 @@ Alternatively, if you just have the point cloud data as a Table:
 using StaticArrays
 using TypedTables
 
-pc = Table(position = rand(SVector{3, Float64}, 10), classification = rand(UIn8, 10))
+pc = Table(position = rand(SVector{3, Float64}, 10), classification = rand(UInt8, 10))
 save_las("my_las.las", pc)
 ```
 
 Note that when you supply just the point cloud outside of a `LASDataset`, *LASDatasets.jl* will automatically construct the appropriate header for you so you don't need to worry about the specifics of appropriate point formats etc. 
 
 ## Modifying LAS Contents
-You can modify point fields in your `LASDataset` by adding new columns or merging in values from an existing vector.
+You can modify point fields in your `LASDataset` by adding new columns or merging in values from an existing vector. Additionally, you can add new points to your dataset, however one should note that the user is responsible for correctly setting the appropriate fields such as synthetic flags themselves.
 
 ```@docs; canonical = false
 add_column!
 merge_column!
+add_points!
+```
+
+For example, if you want to add a set of synthetic points to your dataset, you can run:
+```julia
+las = load_las("my_las.las")
+# note - we need to set a synthetic column here for the existing points before we append points with this field
+add_column!(las, :synthetic, falses(number_of_points(las)))
+synthetic_points = Table(position = rand(SVector{3, Float64}, 5), classification = rand(UInt8, 5), synthetic = trues(5))
+add_points!(las, synthetic_points)
 ```
 
 You can also add or remove *(E)VLRs* using the following functions, and set an existing *(E)VLR* as *superseded* if it's an old copy of a record.

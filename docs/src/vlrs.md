@@ -62,7 +62,7 @@ You can then read the *LAS* data and extract the classification lookup:
 las = load_las("pc.las")
 # look for the classification lookup VLR by checking for its user and record IDs
 lookup_vlr = extract_vlr_type(get_vlrs(las), "LASF_Spec", 0)
-lookup = get_data(lookup_vlr[1])
+lookup = get_data(lookup_vlr)
 ```
 
 ### Text Area Descriptions
@@ -150,7 +150,7 @@ So in our example, we can tell the system that records containing data of type `
 @register_vlr_type MyType "My Custom Records" collect(1:100)
 ```
 
-And now we can save our `MyType` *VLRs* into a *LAS* file in the same way as we did above for the register *VLR* types. Note that you can use the function `extract_vlr_type` on your collection of *VLRs* to pull out any *VLRs* with a specific user ID and record ID.
+And now we can save our `MyType` *VLRs* into a *LAS* file in the same way as we did above for the register *VLR* types. Note that you can use the function `extract_vlr_type` on your collection of *VLRs* to pull out the *VLR* with a specific user ID and record ID. 
 
 ```@docs; canonical = false
 extract_vlr_type

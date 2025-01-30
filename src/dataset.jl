@@ -443,8 +443,12 @@ Add a collection of `points` to a `LASDataset`, `las`. Updates header informatio
 """
 function add_points!(las::LASDataset, points::AbstractVector{<:NamedTuple})
     pc = get_pointcloud(las)
-    @assert all(columnnames(points) .∈ Ref(columnnames(pc))) "Point fields being appended $(columnnames(points)) must match those present in the dataset, $(columnnames(pc))"
-    append!(pc, points)
+    # make new points a FlexTable so we can add any missing columns with 0 values to ensure consistency
+    missing_cols = filter(c -> c ∉ columnnames(points), columnnames(pc))
+    @warn "Adding default entries for missing columns $(missing_cols)"
+    # need to make sure columns are in the same order as in pc to avoid errors from TypedTables
+    new_points = Table(NamedTuple{ (columnnames(pc)...,) }( (map(col -> hasproperty(points, col) ? getproperty(points, col) : zeros(eltype(getproperty(pc, col)), length(points)), columnnames(pc))...,) ))
+    append!(pc, new_points)
     # make sure we update the header info too!
     _consolidate_point_header_info!(get_header(las), pc)
     return nothing

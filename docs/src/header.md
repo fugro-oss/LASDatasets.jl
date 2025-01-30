@@ -38,6 +38,7 @@ You can also modify certain fields in the header, but one should note that for s
 
 ```@docs; canonical = false
 set_las_version!
+set_point_format!
 set_spatial_info!
 set_point_data_offset!
 set_point_record_length!
