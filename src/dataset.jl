@@ -455,6 +455,23 @@ function add_points!(las::LASDataset, points::AbstractVector{<:NamedTuple})
     return nothing
 end
 
+"""
+    $(TYPEDSIGNATURES)
+
+Remove a set of points stored at indices `idxs` from a `las` dataset. Updates header information to ensure consistency
+"""
+function remove_points!(las::LASDataset, idxs::Union{AbstractUnitRange, AbstractVector{<:Integer}})
+    pc = get_pointcloud(las)
+    @error "REMOVE"
+    @show length(pc)
+    @show length(pc.id)
+    deleteat!(pc, idxs)
+    @show length(pc)
+    @show length(pc.id)
+    _consolidate_point_header_info!(get_header(las), pc)
+    return nothing
+end
+
 # plumb through header util functions to act on a LASDataset for convenience
 for header_func ∈ (
     :las_version,

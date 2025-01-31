@@ -190,10 +190,9 @@
     add_column!(las, :overlap, falses(length(pc)))
     @test point_format(get_header(las)) == LasPoint6
     @test las_version(get_header(las)) == v"1.4"
-
     # we should be able to add new points in too
     new_points = Table(
-        id = length(pc):(length(pc) + 10),
+        id = (length(pc) + 1):(length(pc) + 10),
         position = rand(SVector{3, Float64}, 10),
         classification = rand(UInt8, 10),
         gps_time = rand(10),
@@ -207,8 +206,17 @@
     for col ∈ columnnames(new_points)
         @test getproperty(pointcloud, col)[101:end] == getproperty(new_points, col)
     end
+    orig_pc = deepcopy(pointcloud)
     # also make sure our header information is correctly set
     @test number_of_points(las) == 110
     @test spatial_info(las) == LASDatasets.get_spatial_info(pointcloud)
+
+    # we can also delete these points if we want
+    remove_points!(las, 101:110)
+    @test number_of_points(las) == 100
+    pc = get_pointcloud(las)
+    for col ∈ columnnames(pc)
+        @test getproperty(pc, col) == getproperty(orig_pc, col)[1:100]
+    end
     
 end

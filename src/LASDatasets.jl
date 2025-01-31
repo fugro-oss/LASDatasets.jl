@@ -55,7 +55,7 @@ export get_classes, get_description, set_description!
 export @register_vlr_type, read_vlr_data, extract_vlr_type
 
 export LASDataset, get_header, get_pointcloud, get_vlrs, get_evlrs, get_user_defined_bytes, get_unit_conversion
-export add_column!, add_points!, merge_column!, add_vlr!, remove_vlr!, set_superseded!
+export add_column!, add_points!, remove_points!, merge_column!, add_vlr!, remove_vlr!, set_superseded!
 
 # I/O methods
 export load_las, load_pointcloud, save_las, load_header, load_vlrs

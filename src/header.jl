@@ -593,6 +593,8 @@ function set_point_record_count!(header::LasHeader, num_points::Integer)
     header.record_count = UInt64(num_points)
     if get_point_format_id(point_format(header)) ≤ 5
         header.legacy_record_count = UInt32(num_points)
+    else
+        header.legacy_record_count = zero(UInt32)
     end
     return nothing
 end
@@ -614,6 +616,15 @@ Set the number of Extended Variable Length Records in a LAS file with a header `
 function set_num_evlr!(header::LasHeader, n::Integer)
     @assert las_version(header) == v"1.4" "Can't have extended variable length records in LAS version $(las_version(header))"
     header.n_evlr = UInt64(n)
+end
+
+"""
+    $(TYPEDSIGNATURES)
+
+Set the offset (in bytes) into the LAS file where the first EVLR occurs
+"""
+function set_evlr_start!(header, offset::Integer)
+    header.evlr_start = offset
 end
 
 """If true, GPS Time is standard GPS Time (satellite GPS Time) minus 1e9.
@@ -873,7 +884,10 @@ end
 function _consolidate_point_header_info!(header::LasHeader, pointcloud::AbstractVector{<:NamedTuple})
     set_spatial_info!(header, get_spatial_info(pointcloud, scale(header)))
     
+    old_point_count = number_of_points(header)
     set_point_record_count!(header, length(pointcloud))
+    # make sure we update the EVLR start value if we change the point count
+    set_evlr_start!(header, evlr_start(header) + (length(pointcloud) - old_point_count))
     returns = (:returnnumber ∈ columnnames(pointcloud)) ? pointcloud.returnnumber : ones(Int, length(pointcloud))
     points_per_return = ntuple(r -> count(returns .== r), num_return_channels(header))
     set_number_of_points_by_return!(header, points_per_return)

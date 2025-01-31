@@ -77,12 +77,13 @@ save_las("my_las.las", pc)
 Note that when you supply just the point cloud outside of a `LASDataset`, *LASDatasets.jl* will automatically construct the appropriate header for you so you don't need to worry about the specifics of appropriate point formats etc. 
 
 ## Modifying LAS Contents
-You can modify point fields in your `LASDataset` by adding new columns or merging in values from an existing vector. Additionally, you can add new points to your dataset, however one should note that the user is responsible for correctly setting the appropriate fields such as synthetic flags themselves.
+You can modify point fields in your `LASDataset` by adding new columns or merging in values from an existing vector. Additionally, you can add new points to your dataset or remove them, however one should note when adding points that the user is responsible for correctly setting the appropriate fields such as synthetic flags themselves.
 
 ```@docs; canonical = false
 add_column!
 merge_column!
 add_points!
+remove_points!
 ```
 
 For example, if you want to add a set of synthetic points to your dataset, you can run:
@@ -92,6 +93,11 @@ las = load_las("my_las.las")
 add_column!(las, :synthetic, falses(number_of_points(las)))
 synthetic_points = Table(position = rand(SVector{3, Float64}, 5), classification = rand(UInt8, 5), synthetic = trues(5))
 add_points!(las, synthetic_points)
+```
+
+You can remove points from your data using the `remove_points!` function and specifying the indices of the points you wish to delete (these will be indexing into the list of points in order). E.g.
+```julia
+remove_points!(las, 11:15)
 ```
 
 You can also add or remove *(E)VLRs* using the following functions, and set an existing *(E)VLR* as *superseded* if it's an old copy of a record.
