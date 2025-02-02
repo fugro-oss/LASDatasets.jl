@@ -103,7 +103,7 @@ function bounding_box(points::AbstractVector{SVector{3, T}}) where {T <: Real}
     return (; xmin = x_min, ymin = y_min, zmin = z_min, xmax = x_max, ymax = y_max, zmax = z_max)
 end
 
-get_spatial_info(points::AbstractVector{SVector{3, T}}; scale::T = T(POINT_SCALE)) where {T <: Real} = get_spatial_info(points, AxisInfo{T}(scale, scale, scale))
+get_spatial_info(points::AbstractVector{SVector{3, T}}, scale::T = T(POINT_SCALE)) where {T <: Real} = get_spatial_info(points, AxisInfo{T}(scale, scale, scale))
 get_spatial_info(points::AbstractVector{SVector{3, T}}, scale::SVector{3, T}) where {T <: Real} = get_spatial_info(points, AxisInfo{T}(scale.x, scale.y, scale.z))
 
 function get_spatial_info(points::AbstractVector{SVector{3, T}}, scale::AxisInfo{T}) where {T <: Real}
@@ -125,10 +125,12 @@ function get_spatial_info(points::AbstractVector{SVector{3, T}}, scale::AxisInfo
     return SpatialInfo(scale, offset, AxisInfo(Range(x_max, x_min), Range(y_max, y_min), Range(z_max, z_min)))
 end
 
-get_spatial_info(pc::Union{AbstractVector{<:NamedTuple}, FlexTable}; kwargs...) = get_spatial_info(pc.position; kwargs...)
-get_spatial_info(pc::Union{AbstractVector{<:NamedTuple}, FlexTable}, scale::Union{SVector, AxisInfo}) = get_spatial_info(pc.position, scale)
+get_spatial_info(pc::Union{AbstractVector{<:NamedTuple}, FlexTable}, scale::Union{Real, SVector, AxisInfo}) = get_spatial_info(pc.position, scale)
 
 function determine_offset(min_value, max_value, scale; threshold=10^7)
+    @show scale
+    @show min_value, max_value
+    @show threshold
     s = round(Int64, ((min_value + max_value) / 2) / scale / threshold)
     s *= threshold * scale
     # Try to convert back and forth and check overflow

@@ -820,10 +820,10 @@ function make_consistent_header(pointcloud::AbstractVector{<:NamedTuple},
                                 vlrs::Vector{<:LasVariableLengthRecord}, 
                                 evlrs::Vector{<:LasVariableLengthRecord},
                                 user_defined_bytes::Vector{UInt8},
-                                scale::Union{Real, SVector{3, <:Real}}) where {TPoint <: LasPoint}
+                                scale::Union{Real, SVector{3, <:Real}, AxisInfo}) where {TPoint <: LasPoint}
     version = lasversion_for_point(point_format)
 
-    spatial_info = get_spatial_info(pointcloud; scale = scale)
+    spatial_info = get_spatial_info(pointcloud, scale)
 
     header = LasHeader(; 
         las_version = version, 
