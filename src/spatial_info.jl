@@ -128,9 +128,6 @@ end
 get_spatial_info(pc::Union{AbstractVector{<:NamedTuple}, FlexTable}, scale::Union{Real, SVector, AxisInfo}) = get_spatial_info(pc.position, scale)
 
 function determine_offset(min_value, max_value, scale; threshold=10^7)
-    @show scale
-    @show min_value, max_value
-    @show threshold
     s = round(Int64, ((min_value + max_value) / 2) / scale / threshold)
     s *= threshold * scale
     # Try to convert back and forth and check overflow

@@ -462,12 +462,7 @@ Remove a set of points stored at indices `idxs` from a `las` dataset. Updates he
 """
 function remove_points!(las::LASDataset, idxs::Union{AbstractUnitRange, AbstractVector{<:Integer}})
     pc = get_pointcloud(las)
-    @error "REMOVE"
-    @show length(pc)
-    @show length(pc.id)
     deleteat!(pc, idxs)
-    @show length(pc)
-    @show length(pc.id)
     _consolidate_point_header_info!(get_header(las), pc)
     return nothing
 end
