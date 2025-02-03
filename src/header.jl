@@ -476,14 +476,18 @@ spatial_info(h::LasHeader) = h.spatial_info
 """
     $(TYPEDSIGNATURES)
 
-Get the scale for point positions in a LAS file from a header `h`. Checks consistent scale for ALL axes.
+Get the scale for point positions in a LAS file from a header `h` along an `axis` (x, y or z)
 """
-function scale(h::LasHeader) 
-
-    @assert (h.spatial_info.scale.x == h.spatial_info.scale.y) && (h.spatial_info.scale.y == h.spatial_info.scale.z) "We expect all axes to be scaled similarly"
-    
-    return h.spatial_info.scale.x
+function scale(h::LasHeader, axis::Symbol) 
+    return getproperty(h.spatial_info.scale, axis)
 end
+
+"""
+    $(TYPEDSIGNATURES)
+
+Get the scale for point positions in a LAS file from a header `h` along all axes
+"""
+scale(h::LasHeader) = h.spatial_info.scale
 
 """
     $(TYPEDSIGNATURES)
@@ -495,26 +499,53 @@ num_return_channels(h::LasHeader) = las_version(h) ≥ v"1.4" ? 15 : 5
 """
     $(TYPEDSIGNATURES)
 
-Get the LAS version in a header `h`
+Set the LAS specification version in a header `h` to version `v`
 """
 function set_las_version!(h::LasHeader, v::VersionNumber)
-    if any([
-        (v ≤ v"1.1") && (get_point_format_id(point_format(h)) ≥ 2),
-        (v ≤ v"1.2") && (get_point_format_id(point_format(h)) ≥ 4),
-        (v ≤ v"1.3") && (get_point_format_id(point_format(h)) ≥ 5),
-        (v ≤ v"1.4") && (get_point_format_id(point_format(h)) ≥ 11),
-        v ≥ v"1.5"
-    ])
-        error("Incompatible LAS version $(v) with point format $(point_format(h))")
-    end
+    _point_format_version_consistent(v, point_format(h))
     old_version = deepcopy(las_version(h))
     h.las_version = v
     h.header_size = get_header_size_from_version(v)
     h.data_offset += (h.header_size - get_header_size_from_version(old_version))
-    if (v ≥ v"1.4") && (get_point_format_id(point_format(h)) ≤ 5)
-        h.record_count = UInt64(h.legacy_record_count)
-        h.point_return_count = ntuple(i -> i ≤ 5 ? h.legacy_point_return_count[i] : 0, 15)
+    set_point_record_count!(h, number_of_points(h))
+    set_number_of_points_by_return!(h, get_number_of_points_by_return(h))
+    return nothing
+end
+
+function _point_format_version_consistent(v::VersionNumber, ::Type{TPoint}) where {TPoint <: LasPoint}
+    point_format_id = get_point_format_id(TPoint)
+    if any([
+        (v ≤ v"1.1") && (point_format_id ≥ 2),
+        (v ≤ v"1.2") && (point_format_id ≥ 4),
+        (v ≤ v"1.3") && (point_format_id ≥ 5),
+        (v ≤ v"1.4") && (point_format_id ≥ 11),
+        v ≥ v"1.5"
+    ])
+        error("Incompatible LAS version $(v) with point format $(point_format_id)")
     end
+end
+
+"""
+    $(TYPEDSIGNATURES)
+
+Set the point format in a header `h` to a new value, `TPoint`
+"""
+function set_point_format!(h::LasHeader, ::Type{TPoint}) where {TPoint <: LasPoint}
+    v = las_version(h)
+    minimal_required_version = lasversion_for_point(TPoint)
+    old_format = point_format(h)
+    old_format_id = get_point_format_id(old_format)
+    # make sure that the LAS version in the header is consistent with the point format we want - upgrade if necessary, but let the user know
+    if v < minimal_required_version
+        @warn "Updating LAS version from $(v) to $(minimal_required_version) to accomodate changing point format from $(old_format) to $(TPoint)"
+        set_las_version!(h, minimal_required_version)
+    end
+    _point_format_version_consistent(las_version(h), TPoint)
+    h.data_format_id = get_point_format_id(TPoint)
+    h.data_record_length += (byte_size(TPoint) - byte_size(LasPoint{Int(old_format_id)}))
+    set_point_record_count!(h, number_of_points(h))
+    set_number_of_points_by_return!(h, get_number_of_points_by_return(h))
+    return nothing
 end
 
 """
@@ -554,13 +585,18 @@ end
 Set the number of points in a LAS file with a header `header`
 """
 function set_point_record_count!(header::LasHeader, num_points::Integer)
-    if las_version(header) == v"1.4"
+    if (las_version(header) == v"1.4")
         @assert num_points ≤ typemax(UInt64) "Can't have more than $(typemax(UInt64)) points for LAS v1.4"
-        header.record_count = UInt64(num_points)
     else
         @assert num_points ≤ typemax(UInt32) "Can't have more than $(typemax(UInt32)) points for LAS v1.0-1.3"
-        header.legacy_record_count = UInt32(num_points)
     end
+    header.record_count = UInt64(num_points)
+    if get_point_format_id(point_format(header)) ≤ 5
+        header.legacy_record_count = UInt32(num_points)
+    else
+        header.legacy_record_count = zero(UInt32)
+    end
+    return nothing
 end
 
 """
@@ -580,6 +616,15 @@ Set the number of Extended Variable Length Records in a LAS file with a header `
 function set_num_evlr!(header::LasHeader, n::Integer)
     @assert las_version(header) == v"1.4" "Can't have extended variable length records in LAS version $(las_version(header))"
     header.n_evlr = UInt64(n)
+end
+
+"""
+    $(TYPEDSIGNATURES)
+
+Set the offset (in bytes) into the LAS file where the first EVLR occurs
+"""
+function set_evlr_start!(header, offset::Integer)
+    header.evlr_start = offset
 end
 
 """If true, GPS Time is standard GPS Time (satellite GPS Time) minus 1e9.
@@ -725,11 +770,14 @@ function set_number_of_points_by_return!(header::LasHeader, points_per_return::N
     return_limit = las_version(header) ≥ v"1.4" ? typemax(UInt64) : typemax(UInt32)
     @assert all(points_per_return .≤ return_limit) "Maximum allowed points per return count is $return_limit"
     @assert N == num_return_channels(header) "Number of returns $N doesn't match what's in header $(num_return_channels(header))"
-    if las_version(header) ≥ v"1.4"
-        header.point_return_count = points_per_return
+    # note - internally, we store the point return count up to 15 places, even if the version spec only needs 5 - saves having to redefine field types for header
+    header.point_return_count = ntuple(i -> i ≤ N ? points_per_return[i] : 0, 15)
+    if get_point_format_id(point_format(header)) ≤ 5
+        header.legacy_point_return_count = ntuple(i -> i ≤ N ? points_per_return[i] : 0, 5)
     else
-        header.legacy_point_return_count = points_per_return
+        header.legacy_point_return_count = (0, 0, 0, 0, 0)
     end
+    return nothing
 end
 
 """
@@ -772,10 +820,10 @@ function make_consistent_header(pointcloud::AbstractVector{<:NamedTuple},
                                 vlrs::Vector{<:LasVariableLengthRecord}, 
                                 evlrs::Vector{<:LasVariableLengthRecord},
                                 user_defined_bytes::Vector{UInt8},
-                                scale::Real) where {TPoint <: LasPoint}
+                                scale::Union{Real, SVector{3, <:Real}, AxisInfo}) where {TPoint <: LasPoint}
     version = lasversion_for_point(point_format)
 
-    spatial_info = get_spatial_info(pointcloud; scale = scale)
+    spatial_info = get_spatial_info(pointcloud, scale)
 
     header = LasHeader(; 
         las_version = version, 
@@ -804,12 +852,8 @@ function make_consistent_header!(header::LasHeader,
     point_data_offset = header_size + vlr_size + length(user_defined_bytes)
     
     set_point_data_offset!(header, point_data_offset)
-    set_spatial_info!(header, get_spatial_info(pointcloud; scale = scale(header)))
     
-    set_point_record_count!(header, length(pointcloud))
-    returns = (:returnnumber ∈ columnnames(pointcloud)) ? pointcloud.returnnumber : ones(Int, length(pointcloud))
-    points_per_return = ntuple(r -> count(returns .== r), num_return_channels(header))
-    set_number_of_points_by_return!(header, points_per_return)
+    _consolidate_point_header_info!(header, pointcloud)
 
     if !isempty(vlrs)
         set_num_vlr!(header, length(vlrs))
@@ -833,4 +877,24 @@ function make_consistent_header!(header::LasHeader,
         # don't want waveform bits set for point formats that don't have waveform data
         unset_waveform_bits!(header)
     end
+
+    return nothing
+end
+
+function _consolidate_point_header_info!(header::LasHeader, pointcloud::AbstractVector{<:NamedTuple})
+    set_spatial_info!(header, get_spatial_info(pointcloud, scale(header)))
+    
+    old_point_count = number_of_points(header)
+    set_point_record_count!(header, length(pointcloud))
+    # make sure we update the EVLR start value if we change the point count
+    set_evlr_start!(header, evlr_start(header) + (length(pointcloud) - old_point_count))
+    returns = (:returnnumber ∈ columnnames(pointcloud)) ? pointcloud.returnnumber : ones(Int, length(pointcloud))
+    points_per_return = ntuple(r -> count(returns .== r), num_return_channels(header))
+    set_number_of_points_by_return!(header, points_per_return)
+    if :synthetic ∈ columnnames(pointcloud)
+        set_synthetic_return_numbers_bit!(header)
+    else
+        unset_synthetic_return_numbers_bit!(header)
+    end
+    return nothing
 end

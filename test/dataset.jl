@@ -58,9 +58,7 @@
     this_header = get_header(las)
     @test point_record_length(this_header) == LASDatasets.byte_size(LasPoint1) + 10
     # our user fields should be populated in the dataset
-    @test las._user_data isa FlexTable
-    @test length(las._user_data) == num_points
-    @test sort(collect(columnnames(las._user_data))) == [:other_thing, :thing]
+    @test sort(collect(columnnames(las.pointcloud))) == [:classification, :gps_time, :id, :other_thing, :position, :thing]
     this_pc = get_pointcloud(las)
     @test this_pc.thing == spicy_pc.thing
     @test this_pc.other_thing == spicy_pc.other_thing
@@ -119,9 +117,11 @@
         "Text Area Description", 
         TextAreaDescription("This is the new dataset description")
     )
-    add_vlr!(las, new_desc)
     # mark the old one as superseded
     set_superseded!(las, desc)
+    # and add the new one
+    add_vlr!(las, new_desc)
+    
     vlrs = get_vlrs(las)
     @test length(vlrs) == 3
     @test vlrs[3] == new_desc
@@ -183,4 +183,40 @@
     remove_vlr!(las, superseded_comment)
     @test number_of_evlrs(get_header(las)) == 1
     @test get_evlrs(las) == [new_commment]
+
+    # test modifying point formats and versions
+    las = LASDataset(pc)
+    # if we add a LAS column that isn't covered by the current format, the point format (and possibly LAS version) should be updated in the header
+    add_column!(las, :overlap, falses(length(pc)))
+    @test point_format(get_header(las)) == LasPoint6
+    @test las_version(get_header(las)) == v"1.4"
+    # we should be able to add new points in too
+    new_points = Table(
+        id = (length(pc) + 1):(length(pc) + 10),
+        position = rand(SVector{3, Float64}, 10),
+        classification = rand(UInt8, 10),
+        gps_time = rand(10),
+        overlap = falses(10)
+    )
+    add_points!(las, new_points)
+    pointcloud = get_pointcloud(las)
+    # check the point contents to make sure our new points are there
+    @test length(pointcloud) == 110
+    # equality checks are annoying when the column order gets switched internally, so check each column individually
+    for col ∈ columnnames(new_points)
+        @test getproperty(pointcloud, col)[101:end] == getproperty(new_points, col)
+    end
+    orig_pc = deepcopy(pointcloud)
+    # also make sure our header information is correctly set
+    @test number_of_points(las) == 110
+    @test spatial_info(las) == LASDatasets.get_spatial_info(pointcloud)
+
+    # we can also delete these points if we want
+    remove_points!(las, 101:110)
+    @test number_of_points(las) == 100
+    pc = get_pointcloud(las)
+    for col ∈ columnnames(pc)
+        @test getproperty(pc, col) == getproperty(orig_pc, col)[1:100]
+    end
+    
 end

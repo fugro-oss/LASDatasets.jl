@@ -6,7 +6,9 @@
         creation_year = UInt16(2024),
         data_format_id = 0x01,
         data_record_length = UInt16(28),
-        record_count = UInt64(100)
+        record_count = UInt64(100),
+        point_return_count = UInt64.((100, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)),
+        legacy_point_return_count = UInt32.((100, 0, 0, 0, 0))
     )
 
     # make sure we can get and set properties ok
@@ -27,6 +29,35 @@
     @test number_of_points(header) == 100
     set_point_record_count!(header, 150)
     @test number_of_points(header) == 150
+    @test get_number_of_points_by_return(header) == (100, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+
+    # modifying record type and las version
+    set_las_version!(header, v"1.3")
+    @test las_version(header) == v"1.3"
+    @test header_size(header) == 235
+    @test point_data_offset(header) == 236
+    @test point_format(header) == LasPoint1
+    set_point_format!(header, LasPoint0)
+    @test point_format(header) == LasPoint0
+    # should now be 20 bytes (for las point 0) plus 2 undocumented extra bytes
+    @test point_record_length(header) == 22
+    # the point return counts should match the legacy counts here
+    @test get_number_of_points_by_return(header) == (100, 0, 0, 0, 0)
+
+    # if we request setting to a higher point format than the LAS version in the header supports, the version should be updated to the minimal compatible one
+    set_point_format!(header, LasPoint7)
+    @test las_version(header) == v"1.4"
+    @test header_size(header) == 375
+    @test point_data_offset(header) == 376
+    
+    # now, we should get the same return counts, but set the legacy counts internally to 0
+    @test get_number_of_points_by_return(header) == (100, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+    @test header.legacy_point_return_count == (0, 0, 0, 0, 0)
+
+    set_point_format!(header, LasPoint1)
+    @test point_format(header) == LasPoint1
+    @test point_record_length(header) == 30
+
     
     @test number_of_vlrs(header) == 0
     set_num_vlr!(header, 2)
@@ -36,7 +67,6 @@
     @test number_of_evlrs(header) == 1
 
     @test num_return_channels(header) == 15
-    @test get_number_of_points_by_return(header) == Tuple(zeros(Int, 15))
     points_per_return = ntuple(i -> 10, 15)
     set_number_of_points_by_return!(header, points_per_return)
     @test get_number_of_points_by_return(header) == points_per_return

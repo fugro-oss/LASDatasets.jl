@@ -5,35 +5,32 @@ A wrapper around a LAS dataset. Contains point cloud data in tabular format as w
 
 $(TYPEDFIELDS)
 """
-mutable struct LASDataset
+struct LASDataset
     """The header from the LAS file the points were extracted from"""
-    const header::LasHeader
+    header::LasHeader
     
-    """LAS point cloud data stored in a Tabular format for convenience"""
-    const pointcloud::Table
-
-    """Additional user data assigned to each point that aren't standard LAS fields"""
-    _user_data::Union{Missing, FlexTable}
+    """Point cloud data stored in a Tabular format for convenience"""
+    pointcloud::FlexTable
     
     """Collection of Variable Length Records from the LAS file"""
-    const vlrs::Vector{LasVariableLengthRecord}
+    vlrs::Vector{LasVariableLengthRecord}
     
     """Collection of Extended Variable Length Records from the LAS file"""
-    const evlrs::Vector{LasVariableLengthRecord}
+    evlrs::Vector{LasVariableLengthRecord}
 
     """Extra user bytes packed between the Header block and the first VLR of the source LAS file"""
-    const user_defined_bytes::Vector{UInt8}
+    user_defined_bytes::Vector{UInt8}
 
     """Unit conversion factors applied to each axis when the dataset is ingested. This is reversed when you save the dataset to keep header/coordinate system information consistent"""
-    const unit_conversion::SVector{3, Float64}
+    unit_conversion::SVector{3, Float64}
 
     function LASDataset(header::LasHeader,
-                        pointcloud::Table,
+                        pointcloud::AbstractVector{<:NamedTuple},
                         vlrs::Vector{<:LasVariableLengthRecord},
                         evlrs::Vector{<:LasVariableLengthRecord},
                         user_defined_bytes::Vector{UInt8},
                         unit_conversion::SVector{3, Float64} = NO_CONVERSION)
-
+        pointcloud = FlexTable(pointcloud)
         # do a few checks to make sure everything is consistent between the header and other data
         point_format_from_table = get_point_format(pointcloud)
         point_format_from_header = point_format(header)
@@ -59,19 +56,16 @@ mutable struct LASDataset
 
         # if points don't have an ID column assigned to them, add it in
         if :id ∉ columnnames(pointcloud)
-            pointcloud = Table(pointcloud, id = collect(1:length(pointcloud)))
+            pointcloud.id = collect(1:length(pointcloud))
         end
 
         # need to split out our "standard" las columns from user-specific ones
         cols = collect(columnnames(pointcloud))
         these_are_las_cols = cols .∈ Ref(RECOGNISED_LAS_COLUMNS)
-        las_cols = cols[these_are_las_cols]
         other_cols = cols[.!these_are_las_cols]
-        las_pc = Table(NamedTuple{ (las_cols...,) }( (map(col -> getproperty(pointcloud, col), las_cols)...,) ))
         
-        make_consistent_header!(header, las_pc, vlrs, evlrs, user_defined_bytes)
+        make_consistent_header!(header, pointcloud, vlrs, evlrs, user_defined_bytes)
 
-        user_pc = isempty(other_cols) ? missing : FlexTable(NamedTuple{ (other_cols...,) }( (map(col -> getproperty(pointcloud, col), other_cols)...,) ))
         for col ∈ other_cols
             # account for potentially having an undocumented entry - in this case, don't add an ExtraBytes VLR
             if col != :undocumented_bytes
@@ -82,15 +76,12 @@ mutable struct LASDataset
 
                 # grab information about the existing ExtraBytes VLRs - need to see if we need to update them or not
                 extra_bytes_vlr = extract_vlr_type(vlrs, LAS_SPEC_USER_ID, ID_EXTRABYTES)
-                @assert length(extra_bytes_vlr) ≤ 1 "Found multiple Extra Bytes VLRs in LAS file!"
-                if isempty(extra_bytes_vlr)
+                if isnothing(extra_bytes_vlr)
                     extra_bytes_vlr = LasVariableLengthRecord(LAS_SPEC_USER_ID, ID_EXTRABYTES, "Extra Bytes", ExtraBytesCollection())
                     # make sure we add the VLR to our collection and update any header info
                     push!(vlrs, extra_bytes_vlr)
                     header.n_vlr += 1
                     header.data_offset += sizeof(extra_bytes_vlr)
-                else
-                    extra_bytes_vlr = extra_bytes_vlr[1]
                 end
                 extra_bytes_data = get_extra_bytes(get_data(extra_bytes_vlr))
                 user_field_names = Symbol.(name.(extra_bytes_data))
@@ -121,7 +112,7 @@ mutable struct LASDataset
                 end
             end
         end
-        return new(header, las_pc, user_pc, Vector{LasVariableLengthRecord}(vlrs), Vector{LasVariableLengthRecord}(evlrs), user_defined_bytes, unit_conversion)
+        return new(header, pointcloud, Vector{LasVariableLengthRecord}(vlrs), Vector{LasVariableLengthRecord}(evlrs), user_defined_bytes, unit_conversion)
     end
 end
 
@@ -131,14 +122,14 @@ end
 Create a LASDataset from a pointcloud and optionally vlrs/evlrs/user_defined_bytes, 
 NO header required.
 """
-function LASDataset(pointcloud::Table;
+function LASDataset(pointcloud::AbstractVector{<:NamedTuple};
                     vlrs::Vector{<:LasVariableLengthRecord} = LasVariableLengthRecord[],
                     evlrs::Vector{<:LasVariableLengthRecord} = LasVariableLengthRecord[],
                     user_defined_bytes::Vector{UInt8} = UInt8[],
-                    scale::Real = POINT_SCALE)
+                    scale::Union{Real, SVector, AxisInfo} = POINT_SCALE)
 
     point_format = get_point_format(pointcloud)
-    spatial_info = get_spatial_info(pointcloud; scale = scale)
+    spatial_info = get_spatial_info(pointcloud, scale)
 
     header = LasHeader(; 
         las_version = lasversion_for_point(point_format), 
@@ -158,11 +149,7 @@ end
 Extract point cloud data as a Table from a `LASDataset` `las`
 """
 function get_pointcloud(las::LASDataset)
-    if ismissing(las._user_data)
-        return las.pointcloud
-    else
-        return Table(las.pointcloud, las._user_data)
-    end
+    return las.pointcloud
 end
 
 """
@@ -215,9 +202,11 @@ function Base.show(io::IO, las::LASDataset)
     println(io, "LAS Dataset")
     println(io, "\tNum Points: $(length(get_pointcloud(las)))")
     println(io, "\tPoint Format: $(point_format(get_header(las)))")
-    println(io, "\tPoint Channels: $(columnnames(las.pointcloud))")
-    if !ismissing(las._user_data)
-        println(io, "\tUser Fields: $(columnnames(las._user_data))")
+    all_cols = columnnames(las.pointcloud)
+    is_las = collect(all_cols .∈ Ref(RECOGNISED_LAS_COLUMNS))
+    println(io, "\tPoint Channels: $(all_cols[is_las])")
+    if any(.!is_las)
+        println(io, "\tUser Fields: $(all_cols[.!is_las])")
     end
     println(io, "\tVLR's: $(length(get_vlrs(las)))")
     println(io, "\tEVLR's: $(length(get_evlrs(las)))")
@@ -264,12 +253,16 @@ Add a `vlr` into the set of VLRs in a LAS dataset `las`.
 Note that this will modify the header content of `las`, including updating its LAS version to v1.4 if `vlr` is extended
 """
 function add_vlr!(las::LASDataset, vlr::LasVariableLengthRecord)
-    if is_extended(vlr) && isempty(get_evlrs(las))
+    if is_extended(vlr) && las_version(las) < v"1.4"
         # evlrs only supported in LAS 1.4
+        @warn "Upgrading LAS spec version to 1.4.0 from $(las_version(las)) to support use of EVLRs"
         set_las_version!(get_header(las), v"1.4")
     end
 
     header = get_header(las)
+
+    existing_vlr = extract_vlr_type(get_vlrs(las), get_user_id(vlr), get_record_id(vlr))
+    @assert isnothing(existing_vlr) "We already have a VLR with user ID $(get_user_id(vlr)) and record ID $(get_record_id(vlr)) in the las dataset!"
     
     if is_extended(vlr)
         set_num_evlr!(header, number_of_evlrs(header) + 1)
@@ -334,39 +327,51 @@ Add a column with name `column` and set of `values` to a `las` dataset
 """
 function add_column!(las::LASDataset, column::Symbol, values::AbstractVector{T}) where T
     @assert length(values) == length(las.pointcloud) "Column size $(length(values)) inconsistent with number of points $(length(las.pointcloud))"
-    check_user_type(T)
-    if ismissing(las._user_data)
-        las._user_data = FlexTable(NamedTuple{ (column,) }( (values,) ))
-    else
-        # make sure if we're replacing a column we correctly update the header size
-        if column ∈ columnnames(las._user_data)
-            las.header.data_record_length -= sizeof(eltype(getproperty(las._user_data, column)))
+    pointcloud = get_pointcloud(las)
+    
+    is_user = column ∉ RECOGNISED_LAS_COLUMNS
+    if is_user 
+        check_user_type(T)
+        # need to update our header information and VLRs to track this user column
+        if column ∈ columnnames(pointcloud)
+            las.header.data_record_length -= sizeof(eltype(getproperty(pointcloud, column)))
         end
-        Base.setproperty!(las._user_data, column, values)
-    end
-    las.header.data_record_length += sizeof(T)
-    vlrs = get_vlrs(las)
-    extra_bytes_vlrs = extract_vlr_type(vlrs, LAS_SPEC_USER_ID, ID_EXTRABYTES)
-    @assert length(extra_bytes_vlrs) ≤ 1 "Found $(length(extra_bytes_vlrs)) Extra Bytes VLRs when we can only have a max of 1"
-    if isempty(extra_bytes_vlrs)
-        extra_bytes_vlr = LasVariableLengthRecord(LAS_SPEC_USER_ID, ID_EXTRABYTES, "Extra Bytes Records", ExtraBytesCollection())
-        # make sure we add it to the dataset to account for offsets in the header etc.
-        add_vlr!(las, extra_bytes_vlr)
-    else
-        extra_bytes_vlr = extra_bytes_vlrs[1]
-    end
-    if T <: SVector
-        # user field arrays have to be saved as sequential extra bytes records with names of the form "column [i]" (zero indexing encouraged)
-        split_col_name = split_column_name(column, length(T))
-        for i ∈ 1:length(T)
-            add_extra_bytes!(las, split_col_name[i], eltype(T), extra_bytes_vlr)
+        las.header.data_record_length += sizeof(T)
+        vlrs = get_vlrs(las)
+        extra_bytes_vlr = extract_vlr_type(vlrs, LAS_SPEC_USER_ID, ID_EXTRABYTES)
+        if isnothing(extra_bytes_vlr)
+            extra_bytes_vlr = LasVariableLengthRecord(LAS_SPEC_USER_ID, ID_EXTRABYTES, "Extra Bytes Records", ExtraBytesCollection())
+            # make sure we add it to the dataset to account for offsets in the header etc.
+            add_vlr!(las, extra_bytes_vlr)
         end
-    else
-        add_extra_bytes!(las, column, T, extra_bytes_vlr)
+        if T <: SVector
+            # user field arrays have to be saved as sequential extra bytes records with names of the form "column [i]" (zero indexing encouraged)
+            split_col_name = split_column_name(column, length(T))
+            for i ∈ 1:length(T)
+                add_extra_bytes!(las, split_col_name[i], eltype(T), extra_bytes_vlr)
+            end
+        else
+            add_extra_bytes!(las, column, T, extra_bytes_vlr)
+        end
+        # make sure we keep our offset to our first EVLR consistent now we've crammed more data in
+        update_evlr_offset!(las)
+    elseif column ∉ has_columns(point_format(get_header(las)))
+        # we're adding a new LAS column, which will necessitate changing the point format (and possibly the version)
+        las_cols = filter(c -> c ∈ RECOGNISED_LAS_COLUMNS, collect(columnnames(pointcloud)))
+        push!(las_cols, column)
+        new_format = get_point_format(las_cols)
+        @warn "Changing point format to $(new_format) to allow the inclusion of LAS column $(column)"
+        
+        set_point_format!(las, new_format)
+
+        # special case - if we're adding synthetic points, need to set the synthetic flag in the header
+        set_synthetic_return_numbers_bit!(las)
     end
-    # make sure we keep our offset to our first EVLR consistent now we've crammed more data in
-    update_evlr_offset!(las)
-    nothing
+
+    # now actually write the values to the column
+    Base.setproperty!(pointcloud, column, values)
+    
+    return nothing
 end
 
 """
@@ -424,4 +429,76 @@ function add_extra_bytes!(las::LASDataset, col_name::Symbol, ::Type{T}, extra_by
     add_extra_bytes_to_collection!(get_data(extra_bytes_vlr), col_name, T)
     header = get_header(las)
     header.data_offset += sizeof(ExtraBytes)
+end
+
+function set_point_format!(las::LASDataset, ::Type{TPoint}) where {TPoint <: LasPoint}
+    set_point_format!(get_header(las), TPoint)
+end
+
+"""
+    $(TYPEDSIGNATURES)
+
+Add a collection of `points` to a `LASDataset`, `las`. Updates header information to ensure dataset consistency
+"""
+function add_points!(las::LASDataset, points::AbstractVector{<:NamedTuple})
+    pc = get_pointcloud(las)
+    # make new points a FlexTable so we can add any missing columns with 0 values to ensure consistency
+    missing_cols = filter(c -> c ∉ columnnames(points), columnnames(pc))
+    if !isempty(missing_cols)
+        @warn "Adding default entries for missing columns $(missing_cols)"
+    end
+    # need to make sure columns are in the same order as in pc to avoid errors from TypedTables
+    new_points = Table(NamedTuple{ (columnnames(pc)...,) }( (map(col -> hasproperty(points, col) ? getproperty(points, col) : zeros(eltype(getproperty(pc, col)), length(points)), columnnames(pc))...,) ))
+    append!(pc, new_points)
+    # make sure we update the header info too!
+    _consolidate_point_header_info!(get_header(las), pc)
+    return nothing
+end
+
+"""
+    $(TYPEDSIGNATURES)
+
+Remove a set of points stored at indices `idxs` from a `las` dataset. Updates header information to ensure consistency
+"""
+function remove_points!(las::LASDataset, idxs::Union{AbstractUnitRange, AbstractVector{<:Integer}})
+    pc = get_pointcloud(las)
+    deleteat!(pc, idxs)
+    _consolidate_point_header_info!(get_header(las), pc)
+    return nothing
+end
+
+# plumb through header util functions to act on a LASDataset for convenience
+for header_func ∈ (
+    :las_version,
+    :file_source_id,
+    :global_encoding, 
+    :system_id,
+    :software_id,
+    :creation_day_of_year,
+    :creation_year,
+    :header_size,
+    :point_data_offset, 
+    :point_record_length,
+    :point_format,
+    :number_of_points,
+    :number_of_vlrs,
+    :number_of_evlrs,
+    :evlr_start,
+    :spatial_info,
+    :scale,
+    :num_return_channels,
+    :is_standard_gps,
+    :is_wkt,
+    :set_gps_standard_time_bit!,
+    :is_internal_waveform,
+    :set_waveform_internal_bit!,
+    :set_waveform_external_bit!,
+    :unset_waveform_bits!,
+    :set_synthetic_return_numbers_bit!,
+    :unset_synthetic_return_numbers_bit!,
+    :set_wkt_bit!,
+    :get_number_of_points_by_return,
+    :waveform_record_start
+    )
+    @eval $header_func(las::LASDataset) = $header_func(get_header(las))
 end

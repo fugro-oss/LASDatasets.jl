@@ -227,6 +227,7 @@ Get the concrete point format struct from an abstract `LasPoint` type
 
 $(METHODLIST)
 """
+get_point_format(::Type{TPoint}) where {TPoint <: LasPoint} = TPoint
 get_point_format(::Type{LasPoint{0}}) = LasPoint0
 get_point_format(::Type{LasPoint{1}}) = LasPoint1
 get_point_format(::Type{LasPoint{2}}) = LasPoint2

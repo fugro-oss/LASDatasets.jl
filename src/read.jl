@@ -107,8 +107,7 @@ function read_las_data(io::TIO, required_columns::TTuple=DEFAULT_LAS_COLUMNS;
     user_defined_bytes = read(io, header.data_offset - pos)
 
     extra_bytes_vlr = extract_vlr_type(vlrs, LAS_SPEC_USER_ID, ID_EXTRABYTES)
-    @assert length(extra_bytes_vlr) ≤ 1 "Found multiple extra bytes columns!"
-    extra_bytes = isempty(extra_bytes_vlr) ? ExtraBytes[] : get_extra_bytes(get_data(extra_bytes_vlr[1]))
+    extra_bytes = isnothing(extra_bytes_vlr) ? ExtraBytes[] : get_extra_bytes(get_data(extra_bytes_vlr))
 
     this_format = record_format(header, extra_bytes)
     xyz = spatial_info(header)

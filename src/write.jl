@@ -96,7 +96,10 @@ function write_las(io::IO, las::LASDataset)
     this_point_format = point_format(header)
     xyz = spatial_info(header)
 
-    user_fields = ismissing(las._user_data) ? () : filter(c -> c != :undocumented_bytes, columnnames(las._user_data))
+    cols = collect(columnnames(pc))
+    these_are_las_cols = cols .∈ Ref(RECOGNISED_LAS_COLUMNS)
+    other_cols = cols[.!these_are_las_cols]
+    user_fields = filter(c -> c != :undocumented_bytes, other_cols)
 
     write(io, header)
 
@@ -151,10 +154,10 @@ function get_record_bytes(records::StructVector{TRecord}, vlrs::Vector{LasVariab
 
     if user_field_bytes > 0
         # need to write the extra bytes fields in the same order as they appear in the VLR
-        extra_bytes_vlrs = extract_vlr_type(vlrs, LAS_SPEC_USER_ID, ID_EXTRABYTES)
-        @assert length(extra_bytes_vlrs) == 1 "Expected to find 1 Extra Bytes VLR, instead found $(length(extra_bytes_vlrs))"
+        extra_bytes_vlr = extract_vlr_type(vlrs, LAS_SPEC_USER_ID, ID_EXTRABYTES)
+        @assert !isnothing(extra_bytes_vlr) "Expected to find an Extra Bytes VLR but found none!"
         # get the order they appear in the VLR
-        user_field_names = unique(get_base_field_name.(Symbol.(name.(get_extra_bytes(get_data(extra_bytes_vlrs[1]))))))
+        user_field_names = unique(get_base_field_name.(Symbol.(name.(get_extra_bytes(get_data(extra_bytes_vlr))))))
         # create a mapping between the order in the VLR and the order in the record
         per_record_user_field_names = get_user_field_names(TRecord)
         user_field_idxs = indexin(user_field_names, collect(per_record_user_field_names))
