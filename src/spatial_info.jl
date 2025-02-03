@@ -125,7 +125,7 @@ function get_spatial_info(points::AbstractVector{SVector{3, T}}, scale::AxisInfo
     return SpatialInfo(scale, offset, AxisInfo(Range(x_max, x_min), Range(y_max, y_min), Range(z_max, z_min)))
 end
 
-get_spatial_info(pc::Union{AbstractVector{<:NamedTuple}, FlexTable}, scale::Union{Real, SVector, AxisInfo}) = get_spatial_info(pc.position, scale)
+get_spatial_info(pc::Union{AbstractVector{<:NamedTuple}, FlexTable}, scale::Union{Real, SVector, AxisInfo} = POINT_SCALE) = get_spatial_info(pc.position, scale)
 
 function determine_offset(min_value, max_value, scale; threshold=10^7)
     s = round(Int64, ((min_value + max_value) / 2) / scale / threshold)

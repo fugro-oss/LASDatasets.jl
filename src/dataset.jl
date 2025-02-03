@@ -25,7 +25,7 @@ struct LASDataset
     unit_conversion::SVector{3, Float64}
 
     function LASDataset(header::LasHeader,
-                        pointcloud::Table,
+                        pointcloud::AbstractVector{<:NamedTuple},
                         vlrs::Vector{<:LasVariableLengthRecord},
                         evlrs::Vector{<:LasVariableLengthRecord},
                         user_defined_bytes::Vector{UInt8},
@@ -122,7 +122,7 @@ end
 Create a LASDataset from a pointcloud and optionally vlrs/evlrs/user_defined_bytes, 
 NO header required.
 """
-function LASDataset(pointcloud::Table;
+function LASDataset(pointcloud::AbstractVector{<:NamedTuple};
                     vlrs::Vector{<:LasVariableLengthRecord} = LasVariableLengthRecord[],
                     evlrs::Vector{<:LasVariableLengthRecord} = LasVariableLengthRecord[],
                     user_defined_bytes::Vector{UInt8} = UInt8[],
