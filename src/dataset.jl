@@ -126,10 +126,10 @@ function LASDataset(pointcloud::Table;
                     vlrs::Vector{<:LasVariableLengthRecord} = LasVariableLengthRecord[],
                     evlrs::Vector{<:LasVariableLengthRecord} = LasVariableLengthRecord[],
                     user_defined_bytes::Vector{UInt8} = UInt8[],
-                    scale::Real = POINT_SCALE)
+                    scale::Union{Real, SVector, AxisInfo} = POINT_SCALE)
 
     point_format = get_point_format(pointcloud)
-    spatial_info = get_spatial_info(pointcloud; scale = scale)
+    spatial_info = get_spatial_info(pointcloud, scale)
 
     header = LasHeader(; 
         las_version = lasversion_for_point(point_format), 
