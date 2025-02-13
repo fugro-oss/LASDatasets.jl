@@ -20,7 +20,7 @@ end
 Write a string `str` to an IO channel `io`, writing exactly `nb` bytes (padding if `str` is too short)
 """
 function writestring(io, str::AbstractString, nb::Integer)
-    n = length(str)
+    n = Base.sizeof(str)
     npad = nb - n
     @assert npad ≥ 0 "String length $(n) exceeds number of bytes $(nb)"
     if npad == 0
