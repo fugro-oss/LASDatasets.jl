@@ -27,4 +27,20 @@
     LASDatasets.writestring(io, "", 5)
     seek(io, 0)
     @test LASDatasets.readstring(io, 5) == ""
+
+    # test with special characters whose ASCII encoding is > 0x80, meaning their number of "code units" will be 2, not one
+    # see here for more details: https://docs.julialang.org/en/v1/manual/strings/#Unicode-and-UTF-8
+    str = "aβcd"
+    take!(io)
+    LASDatasets.writestring(io, str, 5)
+    seek(io, 0)
+    bytes = read(io)
+    @test String(bytes)== str
+
+    # and we should still get the correct buffer if we ask for more bytes
+    take!(io)
+    LASDatasets.writestring(io, str, 7)
+    seek(io, 0)
+    bytes = read(io)
+    @test String(bytes) == "$(str)\0\0"
 end
