@@ -94,7 +94,8 @@ Read LAS data from an IO source
 function read_las_data(io::TIO, required_columns::TTuple=DEFAULT_LAS_COLUMNS;
                         convert_to_metres::Bool = true,
                         convert_x_y_units::Union{String, Missing} = missing,
-                        convert_z_units::Union{String, Missing} = missing) where {TIO <: Union{Base.AbstractPipe,IO}, TTuple}
+                        convert_z_units::Union{String, Missing} = missing,
+                        verbose::Bool = false) where {TIO <: Union{Base.AbstractPipe,IO}, TTuple}
 
     header = read(io, LasHeader)
 
@@ -118,7 +119,7 @@ function read_las_data(io::TIO, required_columns::TTuple=DEFAULT_LAS_COLUMNS;
     as_table = make_table(records, required_columns, xyz)
 
     conversion = if convert_to_metres
-        convert_units!(as_table, vlrs, convert_x_y_units, convert_z_units)
+        convert_units!(as_table, vlrs, convert_x_y_units, convert_z_units, verbose = verbose)
     else
         NO_CONVERSION
     end
