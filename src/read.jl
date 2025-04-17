@@ -264,8 +264,9 @@ function convert_units!(pointcloud::AbstractVector{<:NamedTuple}, vlrs::Vector{L
         if ismissing(convert_x_y_units) && ismissing(convert_z_units) && count(these_are_wkts) == 0
             return NO_CONVERSION
         else
-            ogc_wkt = if count(these_are_wkts) != 1
-                @info "Expected to find 1 OGC WKT VLR, instead found $(count(these_are_wkts))"
+            @assert count(these_are_wkts) <= 1 "Expected to find 1 OGC WKT VLR, instead found $(count(these_are_wkts))"
+            ogc_wkt = if count(these_are_wkts) == 0
+                verbose && @info "No OGC WKT VLR found"
                 missing
             else
                 get_data(vlrs[findfirst(these_are_wkts)])
