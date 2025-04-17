@@ -263,8 +263,12 @@ function convert_units!(pointcloud::AbstractVector{<:NamedTuple}, vlrs::Vector{L
         if ismissing(convert_x_y_units) && ismissing(convert_z_units) && count(these_are_wkts) == 0
             return NO_CONVERSION
         else
-            @assert count(these_are_wkts) == 1 "Expected to find 1 OGC WKT VLR, instead found $(count(these_are_wkts))"
-            ogc_wkt = get_data(vlrs[findfirst(these_are_wkts)])
+            ogc_wkt = if count(these_are_wkts) != 1
+                @info "Expected to find 1 OGC WKT VLR, instead found $(count(these_are_wkts))"
+                missing
+            else
+                get_data(vlrs[findfirst(these_are_wkts)])
+            end
             conversion = conversion_from_vlrs(ogc_wkt, convert_x_y_units = convert_x_y_units, convert_z_units = convert_z_units)
             if !ismissing(conversion) && any(conversion .!= 1.0)
                 verbose && @info "Positions converted to meters using conversion $(conversion)"
