@@ -94,7 +94,8 @@ Read LAS data from an IO source
 function read_las_data(io::TIO, required_columns::TTuple=DEFAULT_LAS_COLUMNS;
                         convert_to_metres::Bool = true,
                         convert_x_y_units::Union{String, Missing} = missing,
-                        convert_z_units::Union{String, Missing} = missing) where {TIO <: Union{Base.AbstractPipe,IO}, TTuple}
+                        convert_z_units::Union{String, Missing} = missing,
+                        verbose::Bool = false) where {TIO <: Union{Base.AbstractPipe,IO}, TTuple}
 
     header = read(io, LasHeader)
 
@@ -118,7 +119,7 @@ function read_las_data(io::TIO, required_columns::TTuple=DEFAULT_LAS_COLUMNS;
     as_table = make_table(records, required_columns, xyz)
 
     conversion = if convert_to_metres
-        convert_units!(as_table, vlrs, convert_x_y_units, convert_z_units)
+        convert_units!(as_table, vlrs, convert_x_y_units, convert_z_units, verbose = verbose)
     else
         NO_CONVERSION
     end
@@ -263,8 +264,13 @@ function convert_units!(pointcloud::AbstractVector{<:NamedTuple}, vlrs::Vector{L
         if ismissing(convert_x_y_units) && ismissing(convert_z_units) && count(these_are_wkts) == 0
             return NO_CONVERSION
         else
-            @assert count(these_are_wkts) == 1 "Expected to find 1 OGC WKT VLR, instead found $(count(these_are_wkts))"
-            ogc_wkt = get_data(vlrs[findfirst(these_are_wkts)])
+            @assert count(these_are_wkts) <= 1 "Expected to find 1 OGC WKT VLR, instead found $(count(these_are_wkts))"
+            ogc_wkt = if count(these_are_wkts) == 0
+                verbose && @info "No OGC WKT VLR found"
+                missing
+            else
+                get_data(vlrs[findfirst(these_are_wkts)])
+            end
             conversion = conversion_from_vlrs(ogc_wkt, convert_x_y_units = convert_x_y_units, convert_z_units = convert_z_units)
             if !ismissing(conversion) && any(conversion .!= 1.0)
                 verbose && @info "Positions converted to meters using conversion $(conversion)"

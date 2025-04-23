@@ -242,7 +242,9 @@ end
 
 get_wkt_string(ogc_wkt::OGC_WKT) = ogc_wkt.wkt_str
 get_horizontal_unit(ogc_wkt::OGC_WKT) = ogc_wkt.unit
+get_horizontal_unit(::Missing) = missing
 get_vertical_unit(ogc_wkt::OGC_WKT) = ogc_wkt.vert_unit
+get_vertical_unit(::Missing) = missing
 
 """
     $(TYPEDSIGNATURES)
@@ -250,7 +252,7 @@ get_vertical_unit(ogc_wkt::OGC_WKT) = ogc_wkt.vert_unit
 Given an OGC WKT coordinate system `wkt`, attempt to parse conversion units (to metres) with optional operator supplied overrides.
 Can opt to convert all axes units or just the vertical.
 """
-function conversion_from_vlrs(wkt::OGC_WKT; 
+function conversion_from_vlrs(wkt::Union{OGC_WKT, Missing}; 
                                 convert_x_y_units::Union{String, Missing} = missing, 
                                 convert_z_units::Union{String, Missing} = missing)::Union{Missing, SVector{3}}
     
