@@ -853,7 +853,7 @@ function make_consistent_header!(header::LasHeader,
     
     set_point_data_offset!(header, point_data_offset)
     
-    _consolidate_point_header_info!(header, pointcloud)
+    _consolidate_point_header_info!(header, pointcloud)    
 
     if !isempty(vlrs)
         set_num_vlr!(header, length(vlrs))
@@ -891,8 +891,13 @@ function _consolidate_point_header_info!(header::LasHeader, pointcloud::Abstract
     returns = (:returnnumber ∈ columnnames(pointcloud)) ? pointcloud.returnnumber : ones(Int, length(pointcloud))
     points_per_return = ntuple(r -> count(returns .== r), num_return_channels(header))
     set_number_of_points_by_return!(header, points_per_return)
+    # check if we have any synthetic points and update the global encoding bit accordingly
     if :synthetic ∈ columnnames(pointcloud)
-        set_synthetic_return_numbers_bit!(header)
+        if any(pointcloud.synthetic)
+            set_synthetic_return_numbers_bit!(header)
+        else
+            unset_synthetic_return_numbers_bit!(header)
+        end
     else
         unset_synthetic_return_numbers_bit!(header)
     end

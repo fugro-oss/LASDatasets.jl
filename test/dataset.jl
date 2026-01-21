@@ -50,6 +50,20 @@
     LASDatasets.make_consistent_header!(h, pc, LasVariableLengthRecord[], LasVariableLengthRecord[], UInt8[])
     las = LASDataset(h, pc, LasVariableLengthRecord[], LasVariableLengthRecord[], UInt8[])
     @test las == LASDataset(deepcopy(pc))
+
+    # check how we're modifying the synthetic flag - if we have no synthetics, it shouldn't be set
+    just_synth_flag(global_encoding::UInt16) = global_encoding & 0x0008
+    @test just_synth_flag(h.global_encoding) == 0x00
+    # but if we set some, our flag should be adjusted
+    pc = Table(pc, synthetic = trues(num_points))
+    h = LasHeader(; las_version = v"1.1", data_format_id = UInt8(1), data_record_length = UInt16(28))
+    LASDatasets.make_consistent_header!(h, pc, LasVariableLengthRecord[], LasVariableLengthRecord[], UInt8[])
+    @test just_synth_flag(h.global_encoding) > 0
+    # if we set all these to false, though, then we shouldn't set the flag either
+    pc.synthetic .= false
+    LASDatasets.make_consistent_header!(h, pc, LasVariableLengthRecord[], LasVariableLengthRecord[], UInt8[])
+    @test just_synth_flag(h.global_encoding) == 0x00
+    
     
     # now try incorporating some user fields
     spicy_pc = Table(pc, thing = rand(num_points), other_thing = rand(Int16, num_points))
@@ -58,7 +72,7 @@
     this_header = get_header(las)
     @test point_record_length(this_header) == LASDatasets.byte_size(LasPoint1) + 10
     # our user fields should be populated in the dataset
-    @test sort(collect(columnnames(las.pointcloud))) == [:classification, :gps_time, :id, :other_thing, :position, :thing]
+    @test sort(collect(columnnames(las.pointcloud))) == [:classification, :gps_time, :id, :other_thing, :position, :synthetic, :thing]
     this_pc = get_pointcloud(las)
     @test this_pc.thing == spicy_pc.thing
     @test this_pc.other_thing == spicy_pc.other_thing
