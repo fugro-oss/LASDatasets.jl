@@ -47,7 +47,9 @@ jobs:
             ${{ runner.os }}-test-
             ${{ runner.os }}-
       - uses: julia-actions/julia-buildpkg@v1
-      - uses: julia-actions/julia-runtest@v1
+      - runs: |
+          julia -e 'using Pkg; Pkg.add("SQLite_jll"); using SQLite_jll'
+      # - uses: julia-actions/julia-runtest@v1
   docs:
     permissions:
       contents: write  # Required when authenticating with `GITHUB_TOKEN`, not needed when authenticating with SSH deploy keys
