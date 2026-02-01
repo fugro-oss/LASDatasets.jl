@@ -1,7 +1,7 @@
 name = "LASDatasets"
 uuid = "cc498e2a-d443-4943-8f26-2a8a0f3c7cdb"
-authors = ["BenCurran98 <b.curran@fugro.com>"]
 version = "0.4.3"
+authors = ["BenCurran98 <b.curran@fugro.com>"]
 
 [deps]
 BufferedStreams = "e1450e63-4bb3-523b-b2a4-4ffa8c0fd77d"
@@ -15,6 +15,7 @@ PackedReadWrite = "5d6e2f64-5c87-46b6-9ff4-cf810e78676d"
 Pkg = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
 Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
 Proj = "c94c279d-25a6-4763-9509-64d165bea63e"
+SQLite_jll = "76ed43ae-9a5d-5a62-8c75-30186b810ce8"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 StructArrays = "09ab397b-f2b6-538f-b94a-2f83cf4a842a"
 TypedTables = "9d95f2ec-7b3d-5a63-8d20-e2491e220bb9"
@@ -28,14 +29,15 @@ FixedPointNumbers = "0.8"
 PackedReadWrite = "0.1"
 Proj = "1"
 Random = "1.11.0"
+SQLite_jll = "3.48.0"
 StaticArrays = "1"
 StructArrays = "0.6"
 TypedTables = "1"
 julia = "1.8"
 
 [extras]
-Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
 test = ["Test", "Random"]
