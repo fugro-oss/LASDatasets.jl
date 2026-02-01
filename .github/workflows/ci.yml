@@ -47,7 +47,7 @@ jobs:
             ${{ runner.os }}-test-
             ${{ runner.os }}-
       - uses: julia-actions/julia-buildpkg@v1
-      - runs: |
+      - run: |
           julia -e 'using Pkg; Pkg.add("SQLite_jll"); using SQLite_jll'
       # - uses: julia-actions/julia-runtest@v1
   docs:
