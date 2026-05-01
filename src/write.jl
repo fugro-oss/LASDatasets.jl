@@ -83,18 +83,16 @@ end
 
 function write_las(io::IO, las::LASDataset)
 
-    vlrs = get_vlrs(las)
-    evlrs = get_evlrs(las)
-    pc = get_pointcloud(las)
     header = get_header(las)
+    pc = get_pointcloud(las)
 
     # reverse our unit conversion done on ingest so the positions match the header / VLR info
     if get_unit_conversion(las) != NO_CONVERSION
         pc.position .= map(p -> p ./ get_unit_conversion(las), pc.position)
+        _consolidate_point_header_info!(header, pc)
     end
 
     this_point_format = point_format(header)
-    header = make_consistent_header(pc, this_point_format, vlrs, evlrs, get_user_defined_bytes(las), scale(header))
     xyz = spatial_info(header)
 
     cols = collect(columnnames(pc))
@@ -104,6 +102,7 @@ function write_las(io::IO, las::LASDataset)
 
     write(io, header)
 
+    vlrs = get_vlrs(las)
     for vlr ∈ vlrs
         write(io, vlr)
     end
@@ -117,7 +116,7 @@ function write_las(io::IO, las::LASDataset)
     byte_vector = get_record_bytes(las_records, vlrs)
     write(io, byte_vector)
 
-    for evlr ∈ evlrs
+    for evlr ∈ get_evlrs(las)
         write(io, evlr)
     end
 
