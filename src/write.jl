@@ -82,16 +82,15 @@ function write_las(io::IO, pointcloud::AbstractVector{<:NamedTuple},
 end
 
 function write_las(io::IO, las::LASDataset)
+
     header = get_header(las)
-    vlrs = get_vlrs(las)
-    
     pc = get_pointcloud(las)
 
     # reverse our unit conversion done on ingest so the positions match the header / VLR info
     if get_unit_conversion(las) != NO_CONVERSION
         pc.position .= map(p -> p ./ get_unit_conversion(las), pc.position)
+        _consolidate_point_header_info!(header, pc)
     end
-
 
     this_point_format = point_format(header)
     xyz = spatial_info(header)
@@ -103,6 +102,7 @@ function write_las(io::IO, las::LASDataset)
 
     write(io, header)
 
+    vlrs = get_vlrs(las)
     for vlr ∈ vlrs
         write(io, vlr)
     end
