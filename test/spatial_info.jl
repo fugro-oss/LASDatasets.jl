@@ -47,4 +47,14 @@
     seek(io, 0)
     out = read(io, SpatialInfo)
     @test out == xyz
+
+    # bounds within half a scale step of zero shouldn't be mistaken for overflow
+    @test LASDatasets.determine_offset(-249.99998612145566, 1.3878544336876075e-5, 0.001) == 0.0
+    @test LASDatasets.determine_offset(-1.0e-5, 250.0, 0.001) == 0.0
+    near_zero = [SVector{3, Float64}(-250.0, 0.0, 0.0), SVector{3, Float64}(1.0e-5, 1.0, 1.0)]
+    @test LASDatasets.get_spatial_info(near_zero) isa SpatialInfo
+
+    # genuine overflows should still be caught
+    @test_throws ErrorException LASDatasets.determine_offset(0.0, 1.0e7, 0.001)
+    @test_throws ErrorException LASDatasets.determine_offset(-1.0e7, 0.0, 0.001)
 end
